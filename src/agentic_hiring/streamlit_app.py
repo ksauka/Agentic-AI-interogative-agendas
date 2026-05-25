@@ -325,6 +325,7 @@ def _initial_state() -> dict:
         "post_reco_option": "",
         "post_reco_logged": False,
         "stage2_done": False,
+        "reco_generated": False,
         # Judgement settledness (shown after recommendation and any Stage 2 challenge)
         "judgement_settledness": None,
         "judgement_settledness_logged": False,
@@ -412,7 +413,7 @@ def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) ->
         state["session_start"] = datetime.now(timezone.utc).isoformat()
         logger = restored_logger(condition, state)
         _log(logger, state, "session_started", prolific_pid=state["prolific_pid"])
-        state["stage"] = 1
+        state["stage"] = 2
         st.rerun()
 
 
@@ -473,53 +474,28 @@ def _show_full_doc_view(
 
 
 def _screen_4_cv(
-    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger, condition: Condition
+    state: dict,
+    agent: AgenticHiringDecisionAgent,
+    agent_state: AgentState,
+    logger: EventLogger,
+    condition: Condition,
 ) -> None:
-    # Sub-view: full document opened from CV screen
+    """Single screen: CV review + assessment preferences (C=1) + AI recommendation + Stage 2 + settledness."""
+    # ── Handle doc sub-views ──────────────────────────────────────────────────
     doc_view = state.get("doc_view")
+    if doc_view and doc_view not in ("role_description", "screening_policy"):
+        section = agent.get_section(doc_view)
+        if section:
+            _show_section_view(state, section, logger)
+            return
     if doc_view in ("role_description", "screening_policy"):
         _show_full_doc_view(state, agent, logger, doc_view)
         return
 
+    # ── CV ────────────────────────────────────────────────────────────────────
     st.header(f"Candidate Application — {CANDIDATE_NAME}")
-    st.caption(
-        "Read the candidate's CV below. You may consult the role description or screening "
-        "policy at any time using the reference buttons. When you are ready, request the "
-        "AI's recommendation."
-    )
-    st.divider()
     st.markdown(CV_MARKDOWN)
-    st.divider()
 
-    next_label = (
-        "Set my priorities before seeing the recommendation →"
-        if condition.mixed_initiative_control_cues
-        else "Request AI recommendation →"
-    )
-    next_screen = 5 if condition.mixed_initiative_control_cues else 6
-
-    if st.button(next_label, type="primary", key="proceed_from_cv"):
-        # Compute how long the recruiter spent reading the CV
-        cv_enter_iso = state["screen_enter_times"].get("4")
-        cv_dwell_seconds: int | None = None
-        if cv_enter_iso:
-            try:
-                cv_enter = datetime.fromisoformat(cv_enter_iso)
-                cv_dwell_seconds = round((datetime.now(timezone.utc) - cv_enter).total_seconds())
-            except ValueError:
-                pass
-        _log(
-            logger, state, "candidate_cv_viewed",
-            candidate_name=CANDIDATE_NAME,
-            cv_dwell_seconds=cv_dwell_seconds,
-            role_full_viewed=state.get("role_full_viewed", False),
-            policy_full_viewed=state.get("policy_full_viewed", False),
-            provenance_clicks=state.get("provenance_clicks", 0),
-        )
-        state["stage"] = next_screen
-        st.rerun()
-
-    st.markdown("**Reference documents:**")
     col_role, col_policy, _ = st.columns([1, 1, 2])
     with col_role:
         if st.button("View role description", key="view_role_from_cv", use_container_width=True):
@@ -542,156 +518,85 @@ def _screen_4_cv(
                  provenance_click_count=state["provenance_clicks"])
             st.rerun()
 
+    st.divider()
 
-def _screen_5_steering(
-    state: dict, logger: EventLogger, condition: Condition
-) -> None:
-    """Stage 1 assessment-preference screen (C=1 conditions only)."""
-    with st.chat_message("assistant"):
-        st.write(steering_prompt(condition))
+    # ── Stage 1: Assessment preferences (C=1, shown below CV before recommendation) ─
+    if condition.mixed_initiative_control_cues and not state.get("reco_generated"):
+        with st.chat_message("assistant"):
+            st.write(steering_prompt(condition))
 
-    # Checkboxes — one per focus area
-    selected: list[str] = []
-    for area in FOCUS_AREAS:
-        default_checked = area in state.get("user_focus_areas", [])
-        if st.checkbox(area, value=default_checked, key=f"focus_{area}"):
-            selected.append(area)
+        for area in FOCUS_AREAS:
+            default = area in state.get("user_focus_areas", [])
+            st.checkbox(area, value=default, key=f"focus_{area}")
 
-    free_label = (
-        "Tell me anything else you'd like me to consider."
-        if condition.anthropomorphic_cues
-        else "Additional comments (optional):"
-    )
-    free_text = st.text_area(
-        free_label,
-        value=state.get("user_focus_text", ""),
-        height=80,
-        max_chars=500,
-        key="steering_free_text",
-        placeholder=(
-            "e.g. I want to understand whether the candidate can work independently."
+        free_label = (
+            "Tell me anything else you'd like me to consider."
             if condition.anthropomorphic_cues
-            else "e.g. focus on evidence of direct recruitment ownership"
-        ),
-    )
-
-    btn_label = (
-        "Continue to recommendation"
-        if condition.anthropomorphic_cues
-        else "Generate recommendation"
-    )
-    if st.button(btn_label, type="primary", key="submit_steering"):
-        state["user_focus_areas"] = selected
-        state["user_focus_text"] = free_text.strip()
-        focus_parts = list(selected)
-        if free_text.strip():
-            focus_parts.append(free_text.strip())
-        state["user_focus"] = "; ".join(focus_parts)
-        state["user_steering_completed"] = True
-        _log(
-            logger, state, "pre_recommendation_steering",
-            user_focus_areas=selected,
-            user_focus_text=free_text.strip(),
-            user_focus=state["user_focus"],
+            else "Additional comments (optional):"
         )
-        state["stage"] = 6
-        st.rerun()
+        st.text_area(
+            free_label,
+            value=state.get("user_focus_text", ""),
+            height=80,
+            max_chars=500,
+            key="steering_free_text",
+            placeholder=(
+                "e.g. I want to understand whether the candidate can work independently."
+                if condition.anthropomorphic_cues
+                else "e.g. focus on evidence of direct recruitment ownership"
+            ),
+        )
 
-
-def _colorize_section_refs(text: str, label_map: dict) -> str:
-    """Replace cited Section X.Y labels in text with blue HTML spans."""
-    import re
-
-    def _sub(m: re.Match) -> str:
-        label = m.group(0)
-        if label in label_map:
-            return (
-                f'<span style="color:#2563eb;font-weight:600;'
-                f'cursor:pointer">{label}</span>'
+    # ── Generate recommendation button ────────────────────────────────────────
+    if not state.get("reco_generated"):
+        btn_label = (
+            "Continue to recommendation"
+            if condition.anthropomorphic_cues
+            else "Generate recommendation"
+        )
+        if st.button(btn_label, type="primary", key="generate_reco_btn"):
+            cv_enter_iso = state["screen_enter_times"].get("4")
+            cv_dwell_seconds: int | None = None
+            if cv_enter_iso:
+                try:
+                    cv_enter = datetime.fromisoformat(cv_enter_iso)
+                    cv_dwell_seconds = round((datetime.now(timezone.utc) - cv_enter).total_seconds())
+                except ValueError:
+                    pass
+            _log(
+                logger, state, "candidate_cv_viewed",
+                candidate_name=CANDIDATE_NAME,
+                cv_dwell_seconds=cv_dwell_seconds,
+                role_full_viewed=state.get("role_full_viewed", False),
+                policy_full_viewed=state.get("policy_full_viewed", False),
+                provenance_clicks=state.get("provenance_clicks", 0),
             )
-        return label
+            if condition.mixed_initiative_control_cues:
+                collected = [a for a in FOCUS_AREAS if st.session_state.get(f"focus_{a}", False)]
+                collected_text = st.session_state.get("steering_free_text", "").strip()
+                state["user_focus_areas"] = collected
+                state["user_focus_text"] = collected_text
+                focus_parts = list(collected)
+                if collected_text:
+                    focus_parts.append(collected_text)
+                state["user_focus"] = "; ".join(focus_parts)
+                state["user_steering_completed"] = True
+                _log(
+                    logger, state, "pre_recommendation_steering",
+                    user_focus_areas=collected,
+                    user_focus_text=collected_text,
+                    user_focus=state["user_focus"],
+                )
+            state["reco_generated"] = True
+            st.rerun()
+        return  # Don't render recommendation until button clicked
 
-    return re.sub(r"Section\s+\d+\.\d+", _sub, text)
-
-
-def _render_inline_citations(
-    state: dict,
-    text: str,
-    chips: list[EvidenceSection],
-    logger: EventLogger,
-) -> None:
-    """Render recommendation text with section references colored inline; chips as compact pills."""
-    if chips:
-        label_map = {s.section_label: s for s in chips}
-        colored = _colorize_section_refs(text, label_map)
-        st.markdown(colored, unsafe_allow_html=True)
-        # Compact clickable pills — no caption header
-        cols = st.columns(min(len(chips), 6))
-        for idx, section in enumerate(chips[:6]):
-            with cols[idx]:
-                if st.button(
-                    section.section_label,
-                    key=f"cite_{section.evidence_id}",
-                    use_container_width=True,
-                    help=section.heading,
-                ):
-                    state["doc_view"] = section.evidence_id
-                    state["doc_view_from"] = "recommendation"
-                    state["provenance_clicks"] += 1
-                    if section.document_key == "role_description":
-                        state["role_full_viewed"] = True
-                    elif section.document_key == "screening_policy":
-                        state["policy_full_viewed"] = True
-                    _log(
-                        logger, state, "citation_chip_clicked",
-                        evidence_id=section.evidence_id,
-                        section_label=section.section_label,
-                        document=section.document_key,
-                        provenance_click_count=state["provenance_clicks"],
-                    )
-                    st.rerun()
-    else:
-        st.write(text)
-
-
-def _show_section_view(
-    state: dict, section: EvidenceSection, logger: EventLogger
-) -> None:
-    """Render a single cited evidence section with a back button."""
-    st.header(section.heading)
-    st.caption(f"{section.document_title} · {section.section_label}")
-    st.divider()
-    st.write(section.text)
-    st.divider()
-    if st.button("← Back to recommendation", key=f"back_from_section_{section.evidence_id}"):
-        _log(logger, state, "section_view_closed",
-             evidence_id=section.evidence_id, section=section.section_label)
-        state["doc_view"] = None
-        state["doc_view_from"] = None
-        st.rerun()
-
-
-def _screen_6_recommendation(
-    state: dict,
-    condition: Condition,
-    agent: AgenticHiringDecisionAgent,
-    agent_state: AgentState,
-    logger: EventLogger,
-) -> None:
-    # Sub-view: individual cited section opened from citation chip
-    doc_view = state.get("doc_view")
-    if doc_view and doc_view not in ("role_description", "screening_policy"):
-        section = agent.get_section(doc_view)
-        if section:
-            _show_section_view(state, section, logger)
-            return
-    if doc_view in ("role_description", "screening_policy"):
-        _show_full_doc_view(state, agent, logger, doc_view)
-        return
-
-    # Generate recommendation once and cache in session state
+    # ── Recommendation ────────────────────────────────────────────────────────
     if agent_state.recommendation_state is None:
-        with st.spinner("The AI is reviewing the candidate materials\u2026"):
+        with st.spinner(
+            "Reviewing the candidate materials\u2026" if condition.anthropomorphic_cues
+            else "Generating assessment\u2026"
+        ):
             agent.apply_stage1_steering(
                 agent_state,
                 state.get("user_focus_areas", []),
@@ -702,7 +607,6 @@ def _screen_6_recommendation(
     rec_state = agent_state.recommendation_state
     rendered = rec_state.rendered
 
-    # Log once
     if not state["recommendation_logged"]:
         _log(
             logger, state, "recommendation_presented",
@@ -723,11 +627,11 @@ def _screen_6_recommendation(
         else:
             st.write(rendered.text)
 
-    # ── Stage 2: Additional review request (C=1 only) ────────────────────────
+    # ── Stage 2: Additional review request (C=1 only) ─────────────────────────
     _SKIP = (
-        "No — I'm ready to continue"
+        "No \u2014 I'm ready to continue"
         if condition.anthropomorphic_cues
-        else "No — continue to decision"
+        else "No \u2014 continue to decision"
     )
     _CUSTOM_Q = (
         "Ask a different question"
@@ -739,17 +643,14 @@ def _screen_6_recommendation(
     if condition.mixed_initiative_control_cues and not state.get("stage2_done"):
         has_response = bool(state.get("_challenge_text"))
 
-        # Invitation bubble — only before the first challenge response
         if not has_response:
             with st.chat_message("assistant"):
                 st.write(post_recommendation_prompt(condition))
 
-        # Previous challenge response bubble
         if has_response:
             with st.chat_message("assistant"):
                 st.write(state["_challenge_text"])
 
-        # Select aspect to review
         select_label = (
             "What else would you like to examine?" if has_response
             else "What would you like me to examine?" if condition.anthropomorphic_cues
@@ -776,12 +677,12 @@ def _screen_6_recommendation(
                     key="custom_challenge_input",
                     placeholder="e.g. How does the candidate's experience compare to typical applicants for this role?",
                 )
-            btn_label = (
+            review_btn = (
                 "Review this aspect"
                 if condition.anthropomorphic_cues
                 else "Generate additional assessment"
             )
-            if st.button(btn_label, type="primary", key="submit_challenge_btn"):
+            if st.button(review_btn, type="primary", key="submit_challenge_btn"):
                 cache_key = f"challenge_{post_option}_{custom_q[:30]}"
                 state["post_reco_option"] = cache_key
                 challenge_resp = agent.handle_stage2_challenge(
@@ -798,8 +699,7 @@ def _screen_6_recommendation(
                     state["post_reco_logged"] = True
                 st.rerun()
 
-    # ── Judgement Settledness scale ───────────────────────────────────────────
-    # C=0: always shown. C=1: only after at least one challenge OR explicit skip.
+    # ── Judgement Settledness ──────────────────────────────────────────────────
     show_settledness = (
         not condition.mixed_initiative_control_cues
         or state.get("stage2_done")
@@ -808,7 +708,7 @@ def _screen_6_recommendation(
     if show_settledness:
         st.divider()
         st.markdown("**At this point, how settled is your judgement about the recommendation?**")
-        st.caption("1 = I still need to examine it further · 7 = My judgement is fully settled")
+        st.caption("1 = I still need to examine it further \u00b7 7 = My judgement is fully settled")
         settledness_val = st.select_slider(
             "Judgement settledness",
             options=[1, 2, 3, 4, 5, 6, 7],
@@ -816,7 +716,7 @@ def _screen_6_recommendation(
             key="judgement_settledness_slider",
             label_visibility="collapsed",
         )
-        if st.button("Confirm and continue to decision →", type="primary", key="confirm_settledness"):
+        if st.button("Confirm and continue to decision \u2192", type="primary", key="confirm_settledness"):
             state["judgement_settledness"] = int(settledness_val)
             if not state["judgement_settledness_logged"]:
                 _log(
@@ -832,8 +732,76 @@ def _screen_6_recommendation(
             st.rerun()
 
 
+
+
+def _colorize_section_refs(text: str, label_map: dict) -> str:
+    """Replace cited Section X.Y labels in text with underlined hyperlink-style spans."""
+    import re
+
+    def _sub(m: re.Match) -> str:
+        label = m.group(0)
+        if label in label_map:
+            return (
+                f'<a style="color:#2563eb;font-weight:600;text-decoration:underline;'
+                f'cursor:pointer" href="javascript:void(0)">{label}</a>'
+            )
+        return label
+
+    return re.sub(r"Section\s+\d+\.\d+", _sub, text)
+
+
+def _render_inline_citations(
+    state: dict,
+    text: str,
+    chips: list[EvidenceSection],
+    logger: EventLogger,
+) -> None:
+    """Render recommendation text with section references as styled links; sections open inline as expanders with highlighted text."""
+    if chips:
+        label_map = {s.section_label: s for s in chips}
+        colored = _colorize_section_refs(text, label_map)
+        st.markdown(colored, unsafe_allow_html=True)
+        # Inline expanders — clicking reveals highlighted section text without leaving the page
+        for section in chips:
+            with st.expander(f"\U0001f4c4 {section.section_label} \u2014 {section.heading}"):
+                st.markdown(
+                    f'<div style="background:#fef9c3;padding:0.8rem 1rem;'
+                    f'border-left:3px solid #f59e0b;border-radius:4px;line-height:1.7">'
+                    f'{section.text}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.write(text)
+
+
+def _show_section_view(
+    state: dict, section: EvidenceSection, logger: EventLogger
+) -> None:
+    """Render a single cited evidence section with highlighted text and a back button."""
+    st.caption(f"{section.document_title} \u00b7 {section.section_label}")
+    st.markdown(
+        f'<div style="background:#fef9c3;padding:1rem 1.25rem;'
+        f'border-left:4px solid #f59e0b;border-radius:4px;'
+        f'line-height:1.7;font-size:1rem">'
+        f'<strong>{section.heading}</strong><br><br>'
+        f'{section.text}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.write("")
+    if st.button("\u2190 Back to CV and recommendation", key=f"back_from_section_{section.evidence_id}"):
+        _log(logger, state, "section_view_closed",
+             evidence_id=section.evidence_id, section=section.section_label)
+        state["doc_view"] = None
+        state["doc_view_from"] = None
+        st.rerun()
+
+
+
+
 def _screen_7_decision(
-    state: dict, logger: EventLogger
+    state: dict, condition: Condition, logger: EventLogger
 ) -> None:
     ai_recommendation = state.get("ai_recommendation", BASE_RECOMMENDATION)
     st.header("Final Human Decision")
@@ -956,23 +924,22 @@ def run(condition_id: str) -> None:
     if stage == 0:
         _screen_0_welcome(state, condition, logger)
     elif stage == 1:
-        _screen_1_company(state, agent, logger)
+        state["stage"] = 2
+        st.rerun()
     elif stage == 2:
         _screen_2_role(state, agent, logger)
     elif stage == 3:
         _screen_3_policy(state, agent, logger)
     elif stage == 4:
-        _screen_4_cv(state, agent, logger, condition)
+        _screen_4_cv(state, agent, agent_state, logger, condition)
     elif stage == 5:
-        if condition.mixed_initiative_control_cues:
-            _screen_5_steering(state, logger, condition)
-        else:
-            state["stage"] = 6
-            st.rerun()
+        state["stage"] = 4
+        st.rerun()
     elif stage == 6:
-        _screen_6_recommendation(state, condition, agent, agent_state, logger)
+        state["stage"] = 4
+        st.rerun()
     elif stage == 7:
-        _screen_7_decision(state, logger)
+        _screen_7_decision(state, condition, logger)
     elif stage == 9:
         _screen_9_complete(state)
 
