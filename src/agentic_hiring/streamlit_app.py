@@ -417,18 +417,6 @@ def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) ->
         st.rerun()
 
 
-def _screen_1_company(
-    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
-) -> None:
-    sections = agent.get_document_sections("company_context")
-    title = sections[0].document_title if sections else "Company Context"
-    st.header(title)
-    for section in sections:
-        st.markdown(f"**{section.heading}**")
-        st.write(section.text)
-    _next_button(logger, state, "Continue to role description →", 2, "next_to_role")
-
-
 def _screen_2_role(
     state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
