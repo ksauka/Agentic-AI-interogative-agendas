@@ -735,15 +735,17 @@ def _screen_4_cv(
 
 
 def _colorize_section_refs(text: str, label_map: dict) -> str:
-    """Replace cited Section X.Y labels in text with underlined hyperlink-style spans."""
+    """Replace cited Section X.Y labels with clickable stCiteRef spans embedding the evidence_id."""
     import re
 
     def _sub(m: re.Match) -> str:
         label = m.group(0)
         if label in label_map:
+            section = label_map[label]
             return (
-                f'<a style="color:#2563eb;font-weight:600;text-decoration:underline;'
-                f'cursor:pointer" href="javascript:void(0)">{label}</a>'
+                f'<span class="stCiteRef" data-eid="{section.evidence_id}" '
+                f'style="color:#2563eb;font-weight:600;text-decoration:underline;cursor:pointer">'
+                f'{label}</span>'
             )
         return label
 
@@ -756,23 +758,58 @@ def _render_inline_citations(
     chips: list[EvidenceSection],
     logger: EventLogger,
 ) -> None:
-    """Render recommendation text with section references as styled links; sections open inline as expanders with highlighted text."""
-    if chips:
-        label_map = {s.section_label: s for s in chips}
-        colored = _colorize_section_refs(text, label_map)
-        st.markdown(colored, unsafe_allow_html=True)
-        # Inline expanders — clicking reveals highlighted section text without leaving the page
-        for section in chips:
-            with st.expander(f"\U0001f4c4 {section.section_label} \u2014 {section.heading}"):
-                st.markdown(
-                    f'<div style="background:#fef9c3;padding:0.8rem 1rem;'
-                    f'border-left:3px solid #f59e0b;border-radius:4px;line-height:1.7">'
-                    f'{section.text}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-    else:
+    """Render recommendation text with clickable section refs; clicking navigates to the highlighted section."""
+    if not chips:
         st.write(text)
+        return
+
+    label_map = {s.section_label: s for s in chips}
+    colored = _colorize_section_refs(text, label_map)
+    st.markdown(colored, unsafe_allow_html=True)
+
+    # Real Streamlit buttons hidden by JS; triggered when the user clicks a cite span
+    for section in chips:
+        btn_label = f"__nav__{section.evidence_id}"
+        if st.button(btn_label, key=f"cite_nav_{section.evidence_id}"):
+            state["doc_view"] = section.evidence_id
+            state["doc_view_from"] = "recommendation"
+            state["provenance_clicks"] += 1
+            _log(
+                logger, state, "citation_clicked",
+                evidence_id=section.evidence_id,
+                section_label=section.section_label,
+                provenance_click_count=state["provenance_clicks"],
+            )
+            st.rerun()
+
+    # JS: hide __nav__ buttons + forward .stCiteRef span clicks → button clicks
+    st.markdown(
+        """<script>(function () {
+  function wire() {
+    document.querySelectorAll('button').forEach(function (b) {
+      if (b.textContent.trim().startsWith('__nav__')) {
+        var w = b.closest('[data-testid="stButton"]') || b.parentElement;
+        if (w) w.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;';
+      }
+    });
+    document.querySelectorAll('.stCiteRef').forEach(function (span) {
+      if (span.__citeWired) return;
+      span.__citeWired = true;
+      span.addEventListener('click', function () {
+        var target = '__nav__' + this.getAttribute('data-eid');
+        document.querySelectorAll('button').forEach(function (b) {
+          if (b.textContent.trim() === target) b.click();
+        });
+      });
+    });
+  }
+  wire();
+  setTimeout(wire, 200);
+  setTimeout(wire, 800);
+  new MutationObserver(wire).observe(document.body, { childList: true, subtree: true });
+})();</script>""",
+        unsafe_allow_html=True,
+    )
 
 
 def _show_section_view(
