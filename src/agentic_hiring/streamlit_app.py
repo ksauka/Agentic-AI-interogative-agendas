@@ -92,9 +92,6 @@ Cross-functional communication · Scheduling and follow-up · Operational suppor
 Onboarding preparation · Spreadsheet tracking · Basic ATS exposure
 
 ---
-
-*No formal title as recruiter, talent partner, or talent specialist. No explicit
-statement of end-to-end structured recruitment ownership.*
 """
 
 ROLE_SUMMARY = """\
@@ -763,11 +760,7 @@ def _screen_7_decision(
 ) -> None:
     ai_recommendation = state.get("ai_recommendation", BASE_RECOMMENDATION)
     st.header("Final Human Decision")
-    st.write(
-        "Select the screening action you judge appropriate. "
-        "**Your decision may differ from the AI recommendation.** "
-        f"The AI recommended: *{ai_recommendation}*."
-    )
+    st.write("Select the screening action you judge appropriate.")
     with st.form("final_decision_form"):
         decision = st.radio(
             "Final screening action",
