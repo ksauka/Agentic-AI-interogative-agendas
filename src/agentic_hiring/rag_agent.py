@@ -1,4 +1,4 @@
-"""Live LangChain + Chroma + OpenAI implementation of the single hiring agent."""
+"""Live FAISS + OpenAI implementation of the single hiring agent."""
 
 from __future__ import annotations
 
@@ -7,9 +7,8 @@ import os
 from pathlib import Path
 import re
 from typing import Iterable, Literal
-from uuid import uuid4
 
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -45,7 +44,7 @@ class GroundedBasis(BaseModel):
 class OpenAIChromaHiringAgent(HiringRAGAssistant):
     """One agent with persisted internal knowledge and session CV retrieval.
 
-    Company materials persist in Chroma; uploaded CVs remain session-scoped.
+    Company materials persist in a FAISS index; uploaded CVs remain session-scoped.
     """
 
     def __init__(
@@ -87,7 +86,7 @@ class OpenAIChromaHiringAgent(HiringRAGAssistant):
             chunk_size=700, chunk_overlap=50
         ).split_documents(documents)
 
-    def _build_internal_store(self) -> Chroma:
+    def _build_internal_store(self) -> FAISS:
         internal = tuple(
             item for item in self.documents
             if item.evidence_id.startswith(("company_", "role_", "policy_"))
@@ -95,23 +94,19 @@ class OpenAIChromaHiringAgent(HiringRAGAssistant):
         chunks = self._documents_for(internal)
         digest_source = "\n".join(item.page_content for item in chunks).encode("utf-8")
         digest = hashlib.sha256(digest_source).hexdigest()[:12]
+        index_dir = self.persist_directory / f"internal_{digest}"
+        if index_dir.exists():
+            return FAISS.load_local(
+                str(index_dir), self._embeddings, allow_dangerous_deserialization=True
+            )
         self.persist_directory.mkdir(parents=True, exist_ok=True)
-        store = Chroma(
-            collection_name=f"internal_hiring_knowledge_{digest}",
-            persist_directory=str(self.persist_directory),
-            embedding_function=self._embeddings,
-        )
-        if not store.get(limit=1)["ids"]:
-            store.add_documents(chunks, ids=[f"internal_{digest}_{index}" for index in range(len(chunks))])
+        store = FAISS.from_documents(chunks, self._embeddings)
+        store.save_local(str(index_dir))
         return store
 
-    def _build_candidate_store(self) -> Chroma:
+    def _build_candidate_store(self) -> FAISS:
         candidate = tuple(item for item in self.documents if item.evidence_id.startswith("cv_"))
-        return Chroma.from_documents(
-            documents=self._documents_for(candidate),
-            embedding=self._embeddings,
-            collection_name=f"candidate_cv_{uuid4().hex}",
-        )
+        return FAISS.from_documents(self._documents_for(candidate), self._embeddings)
 
     @staticmethod
     def _to_evidence(results: list[tuple[Document, float]]) -> tuple[Evidence, ...]:

@@ -31,33 +31,101 @@ from .theme import apply_anthrokit_theme, show_study_banner
 CANDIDATE_NAME = "Jordan Meyer"
 
 CANDIDATE_TEXT = (
-    "Programme Operations Coordinator — BrightPath (2022–present)\n"
-    "Coordinated cross-functional onboarding projects with five department leads, "
-    "maintained applicant-style tracking dashboards, and communicated progress and "
-    "next steps to participants.\n\n"
-    "Selection-related work: Reviewed programme applications against published "
-    "eligibility criteria and flagged ambiguous cases to a programme manager for "
-    "final decisions.\n\n"
-    "Experience not shown: The CV does not state direct responsibility for "
-    "end-to-end recruitment screening or independent hiring recommendations."
+    "Jordan Meyer — Programme Operations Coordinator\n\n"
+    "Work Experience:\n"
+    "Programme Operations Coordinator — BrightPath Education (February 2022 – present). "
+    "Coordinated cohort onboarding for 12–18 participants per intake, liaising with five department leads. "
+    "Maintained applicant tracking and cohort-status dashboards (Notion, Airtable) covering eligibility checks, "
+    "application status, and follow-up timelines. "
+    "Reviewed programme applications against published eligibility criteria; escalated borderline or ambiguous "
+    "cases to the programme manager for final determination. "
+    "Communicated milestone updates, next-step notifications, and outcome messages to participants and external stakeholders. "
+    "Drafted and maintained process documentation for recurring programme workflows.\n\n"
+    "Events and Scheduling Coordinator — Meridian Consulting Group (August 2020 – January 2022). "
+    "Coordinated 30+ internal and external events per year. "
+    "Maintained participant databases and produced briefing and summary reports. "
+    "Supported project tracking across client-facing engagements.\n\n"
+    "Administrative and Enrolment Coordinator — City Skills Hub (January 2019 – July 2020). "
+    "Supported eight programme facilitators with scheduling, records, and stakeholder communication. "
+    "Managed applicant enquiry resolution and maintained enrolment records.\n\n"
+    "Education: BA Business Administration — Hogeschool van Amsterdam, 2019. "
+    "Specialisation: Organisational Management.\n\n"
+    "Skills: Process coordination, applicant tracking (Notion, Airtable, Excel), "
+    "stakeholder communication, structured documentation, Dutch (native), English (professional).\n\n"
+    "Analyst note: The CV does not state direct responsibility for end-to-end recruitment screening "
+    "or independent hiring decisions. Application review work at BrightPath was conducted under a "
+    "programme manager who held final decision authority."
 )
 
 CV_MARKDOWN = """\
-## Jordan Meyer — Candidate CV
+# Jordan Meyer
+**Programme Operations Coordinator**  
+Utrecht, Netherlands · j.meyer@example.com
 
-**Programme Operations Coordinator — BrightPath** *(2022–present)*
+---
 
-- Coordinated cross-functional onboarding projects with five department leads
-- Maintained applicant-style tracking dashboards and status records
-- Communicated progress and next steps to participants and stakeholders
+## Professional Summary
 
-**Selection-related work**
+Operations professional with five years of experience in programme coordination,
+structured workflow management, and multi-stakeholder communication. Consistent
+track record of managing application and enrolment processes, eligibility review,
+and cross-functional coordination. Looking to apply structured evaluation and
+operations skills in a recruitment-focused role.
 
-- Reviewed programme applications against published eligibility criteria
-- Flagged ambiguous cases to a programme manager for final decisions
+---
 
-> **Note on direct experience:** The CV does not state direct responsibility for
-> end-to-end recruitment screening or independent hiring recommendations.
+## Work Experience
+
+### Programme Operations Coordinator — BrightPath Education
+*February 2022 – present · Utrecht, Netherlands*
+
+BrightPath is a social enterprise delivering professional development pathways
+for early-career professionals across five European cities.
+
+- Coordinated cohort onboarding for 12–18 participants per intake, liaising with
+  five department leads across HR, communications, operations, and programme delivery
+- Maintained applicant tracking and cohort-status dashboards (Notion, Airtable)
+  covering eligibility checks, application status, and follow-up timelines
+- Reviewed programme applications against published eligibility criteria; escalated
+  borderline or ambiguous cases to the programme manager for final determination
+- Communicated milestone updates, next-step notifications, and outcome messages
+  to participants and external stakeholders
+- Drafted and maintained process documentation for recurring programme workflows;
+  contributed to quarterly programme review meetings
+
+### Events and Scheduling Coordinator — Meridian Consulting Group
+*August 2020 – January 2022 · Amsterdam, Netherlands*
+
+- Coordinated 30+ internal and external events per year, managing supplier
+  negotiations, venue bookings, and attendee logistics
+- Maintained participant and stakeholder databases; produced pre-event briefing
+  packs and post-event summary reports
+- Supported senior staff with structured project tracking and client-facing
+  documentation
+
+### Administrative and Enrolment Coordinator — City Skills Hub
+*January 2019 – July 2020 · Amsterdam, Netherlands*
+
+- Supported a team of eight programme facilitators with scheduling, course
+  records, and stakeholder communication
+- Managed applicant enquiry resolution and maintained enrolment records for
+  continuing professional development courses
+
+---
+
+## Education
+
+**Bachelor of Business Administration** — Hogeschool van Amsterdam, 2019  
+Specialisation: Organisational Management
+
+---
+
+## Skills
+
+Process and workflow coordination · Applicant tracking (Notion, Airtable, Excel)
+· Stakeholder communication · Policy and criteria application · Structured
+documentation · Cross-functional collaboration · Dutch (native) · English
+(professional)
 """
 
 ROLE_SUMMARY = """\
@@ -447,7 +515,13 @@ def _screen_4_cv(
         _show_full_doc_view(state, assistant, logger, doc_view)
         return
 
-    st.header("Candidate CV")
+    st.header(f"Candidate Application — {CANDIDATE_NAME}")
+    st.caption(
+        "Read the candidate's CV below. You may consult the role description or screening "
+        "policy at any time using the reference buttons. When you are ready, request the "
+        "AI's recommendation."
+    )
+    st.divider()
     st.markdown(CV_MARKDOWN)
     st.divider()
 
@@ -458,20 +532,31 @@ def _screen_4_cv(
     )
     next_screen = 5 if condition.mixed_initiative_control_cues else 6
 
-    col_main, col_role, col_policy = st.columns([2, 1, 1])
-    with col_main:
-        if st.button(next_label, type="primary", key="proceed_from_cv"):
-            _log(
-                logger, state, "candidate_cv_viewed",
-                role_full_viewed=state.get("role_full_viewed", False),
-                policy_full_viewed=state.get("policy_full_viewed", False),
-                provenance_clicks=state.get("provenance_clicks", 0),
-                candidate_name=CANDIDATE_NAME,
-            )
-            state["stage"] = next_screen
-            st.rerun()
+    if st.button(next_label, type="primary", key="proceed_from_cv"):
+        # Compute how long the recruiter spent reading the CV
+        cv_enter_iso = state["screen_enter_times"].get("4")
+        cv_dwell_seconds: int | None = None
+        if cv_enter_iso:
+            try:
+                cv_enter = datetime.fromisoformat(cv_enter_iso)
+                cv_dwell_seconds = round((datetime.now(timezone.utc) - cv_enter).total_seconds())
+            except ValueError:
+                pass
+        _log(
+            logger, state, "candidate_cv_viewed",
+            candidate_name=CANDIDATE_NAME,
+            cv_dwell_seconds=cv_dwell_seconds,
+            role_full_viewed=state.get("role_full_viewed", False),
+            policy_full_viewed=state.get("policy_full_viewed", False),
+            provenance_clicks=state.get("provenance_clicks", 0),
+        )
+        state["stage"] = next_screen
+        st.rerun()
+
+    st.markdown("**Reference documents:**")
+    col_role, col_policy, _ = st.columns([1, 1, 2])
     with col_role:
-        if st.button("View full role description", key="view_role_from_cv"):
+        if st.button("View role description", key="view_role_from_cv", use_container_width=True):
             state["doc_view"] = "role_description"
             state["doc_view_from"] = "cv"
             state["role_full_viewed"] = True
@@ -481,7 +566,7 @@ def _screen_4_cv(
                  provenance_click_count=state["provenance_clicks"])
             st.rerun()
     with col_policy:
-        if st.button("View full screening policy", key="view_policy_from_cv"):
+        if st.button("View screening policy", key="view_policy_from_cv", use_container_width=True):
             state["doc_view"] = "screening_policy"
             state["doc_view_from"] = "cv"
             state["policy_full_viewed"] = True
@@ -804,7 +889,7 @@ def run(condition_id: str) -> None:
 
     st.set_page_config(
         page_title="AI Hiring Decision Assistant",
-        layout="centered",
+        layout="wide",
         initial_sidebar_state="collapsed",
     )
     apply_anthrokit_theme(st)
@@ -837,9 +922,10 @@ def run(condition_id: str) -> None:
         try:
             assistant = _load_cached_agent(CANDIDATE_TEXT, CANDIDATE_NAME)
             if state.get("assessment") is None:
-                state["assessment"] = assistant.assess(
-                    user_focus=state.get("user_focus", "")
-                )
+                with st.spinner("The AI is reviewing the candidate CV against the role materials…"):
+                    state["assessment"] = assistant.assess(
+                        user_focus=state.get("user_focus", "")
+                    )
             assessment: Assessment = state["assessment"]
         except Exception as exc:
             st.error(f"The retrieval-grounded assistant could not be initialised: {exc}")
