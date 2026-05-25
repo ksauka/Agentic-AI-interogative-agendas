@@ -3,13 +3,35 @@
 from dataclasses import dataclass
 
 
+# ── Stage 1: pre-recommendation steering options (C=1) ─────────────────────
 FOCUS_AREAS = [
-    "Strategic leadership and decision-making capability",
-    "Cross-functional collaboration and stakeholder management",
-    "Technical and analytical proficiency",
-    "Cultural fit and organisational values alignment",
-    "Relevant domain expertise and track record",
+    "Direct talent operations or recruitment coordination experience",
+    "Transferable coordination and process evidence",
+    "Structured screening, tracking, or evaluation support",
+    "Stakeholder communication and cross-functional coordination",
+    "Independent execution and process ownership",
+    "Fairness beyond exact keyword matching",
 ]
+
+# ── Stage 2: post-recommendation challenge options (C=1) ───────────────────
+CHALLENGE_AREAS = [
+    "Show the strongest reason to advance the candidate",
+    "Show the strongest reason for caution",
+    "Identify which requirements remain uncertain",
+    "Explain what information is still missing",
+    "Reassess using a stricter interpretation of the screening policy",
+    "Reassess using more weight on transferable evidence",
+    "Ask a custom question",
+]
+
+# ── Fixed labels shared by all conditions ──────────────────────────────────
+RECOMMENDATION_ACTIONS = [
+    "Reject application",
+    "Advance to human interview",
+    "Hold for further review",
+]
+
+BASE_RECOMMENDATION = "Advance to human interview"
 
 
 @dataclass(frozen=True)
@@ -55,31 +77,31 @@ def steering_prompt(condition: Condition) -> str:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before I begin my analysis, I'd like to understand what matters most to you "
-            "for this role. Please select the aspects you want me to prioritise, and feel "
-            "free to add any specific concerns or criteria that should shape the assessment. "
-            "Your input will be reflected in how I frame the recommendation — this is your "
-            "agenda, not mine."
+            "Before I review the candidate, it would help to know what you want me to pay "
+            "closest attention to. Please select the aspects you consider most important for "
+            "this role, and add any specific concern if needed. I will take your priorities "
+            "into account when framing the recommendation."
         )
     return (
-        "Before the assessment is generated, identify the aspects most important for this "
-        "role and optionally describe any specific priorities or concerns. These will be "
-        "incorporated into the recommendation framing. The assessment agenda is set by you."
+        "Before the assessment is generated, select the aspects that should receive "
+        "additional attention. Optional comments may be added to specify further screening "
+        "priorities. These priorities will be incorporated into the recommendation framing."
     )
 
 
-def control_prompt(condition: Condition) -> str:
+def post_recommendation_prompt(condition: Condition) -> str:
+    """Return the post-recommendation challenge invitation for C=1 conditions."""
     if not condition.mixed_initiative_control_cues:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Now that I have your priorities, how would you like to proceed? "
-            "You can inspect the retrieved evidence first to verify the basis of my "
-            "assessment, or go straight to my recommendation. The final screening "
-            "decision remains yours."
+            "Before you make your final decision, you can ask me to examine one part of the "
+            "recommendation more closely. You may want to check the strongest reason to advance "
+            "the candidate, the strongest reason for caution, or whether a stricter reading of "
+            "the policy would change the recommendation."
         )
     return (
-        "With your stated priorities noted, select whether to inspect the strongest "
-        "retrieved evidence first or view the recommendation directly. The final "
-        "decision remains with the participant."
+        "Before the final decision, select one aspect of the recommendation for further "
+        "examination. Available options include supporting evidence, cautionary evidence, "
+        "policy interpretation, and missing information."
     )

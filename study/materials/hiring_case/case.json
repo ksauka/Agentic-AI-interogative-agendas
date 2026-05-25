@@ -56,29 +56,40 @@
     ]
   },
   "candidate_cv": {
-    "title": "Candidate CV: Jordan Meyer",
+    "title": "Candidate CV: Yuna Suvh",
     "sections": [
       {
         "id": "cv_1",
-        "heading": "Programme Operations Coordinator, BrightPath (2022-present)",
-        "text": "Coordinated cross-functional onboarding projects with five department leads, maintained applicant-style tracking dashboards, and communicated progress and next steps to participants."
+        "heading": "People and Operations Coordinator, BrightScale Commerce (2022\u2013present)",
+        "text": "Coordinated candidate scheduling, hiring follow-ups, and communication between hiring managers and applicants across multiple open roles. Maintained internal tracking sheets for candidate progress and interview stages; flagged gaps and delays to line managers. Supported preparation of structured interview packs and evaluation notes; did not hold independent decision authority over outcomes. Improved internal follow-up process for open roles, reducing missed communication steps."
       },
       {
         "id": "cv_2",
-        "heading": "Selection-related work",
-        "text": "Reviewed programme applications against published eligibility criteria and flagged ambiguous cases to a programme manager for final decisions."
+        "heading": "Adjacent screening-support work \u2014 Nexa Solutions (2019\u20132022)",
+        "text": "Assisted with shortlisting external contractors for project support roles but was not the final decision-maker. Managed cross-team communication, tracked project stages, and prepared stakeholder updates in a growing SME."
       },
       {
         "id": "cv_3",
-        "heading": "Experience not shown",
-        "text": "The CV does not state direct responsibility for end-to-end recruitment screening or independent hiring recommendations."
+        "heading": "Analyst note on candidate evidence",
+        "text": "The CV does not state a formal recruitment title or explicit end-to-end structured recruitment ownership. Candidate worked under Yuna Suvh's own coordination role titles. Strong evidence of adjacent coordination and screening-related support activities."
       }
     ]
   },
   "fixed_assessment": {
-    "recommendation": "Hold for further review",
+    "recommendation": "Advance to human interview",
     "retrieval_query": "company growth SME expansion organisational context structured screening evaluation stakeholder coordination tracking equivalent experience uncertainty recruitment recommendation applications criteria decisions dashboards direct end-to-end hold further review borderline transferable exact keywords material uncertainty human final authority",
-    "supporting_ids": ["company_1", "cv_1", "cv_2", "role_section_5", "policy_section_7"],
-    "caution_ids": ["cv_3", "role_section_6", "policy_section_6"]
+    "supporting_ids": [
+      "cv_1",
+      "role_description_section_5_2",
+      "role_description_section_5_3",
+      "role_description_section_5_5",
+      "screening_policy_section_7_2",
+      "screening_policy_section_7_3"
+    ],
+    "caution_ids": [
+      "cv_3",
+      "role_description_section_5_4",
+      "role_description_section_6_2"
+    ]
   }
 }

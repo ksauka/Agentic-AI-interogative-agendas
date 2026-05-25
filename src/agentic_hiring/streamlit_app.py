@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
@@ -18,114 +19,82 @@ import streamlit as st
 from .conditions import (
     Condition,
     FOCUS_AREAS,
-    control_prompt,
+    CHALLENGE_AREAS,
+    post_recommendation_prompt,
+    RECOMMENDATION_ACTIONS,
+    BASE_RECOMMENDATION,
     get_condition,
     steering_prompt,
 )
-from .engine import Assessment, HiringRAGAssistant
+from .decision_agent import AgenticHiringDecisionAgent, create_decision_agent
 from .logger import EventLogger, restored_logger
+from .schemas import AgentState, EvidenceSection
 from .theme import apply_anthrokit_theme, show_study_banner
 
 # ─── Fixed study case ─────────────────────────────────────────────────────────
 
-CANDIDATE_NAME = "Jordan Meyer"
-
-CANDIDATE_TEXT = (
-    "Jordan Meyer — Programme Operations Coordinator\n\n"
-    "Work Experience:\n"
-    "Programme Operations Coordinator — BrightPath Education (February 2022 – present). "
-    "Coordinated cohort onboarding for 12–18 participants per intake, liaising with five department leads. "
-    "Maintained applicant tracking and cohort-status dashboards (Notion, Airtable) covering eligibility checks, "
-    "application status, and follow-up timelines. "
-    "Reviewed programme applications against published eligibility criteria; escalated borderline or ambiguous "
-    "cases to the programme manager for final determination. "
-    "Communicated milestone updates, next-step notifications, and outcome messages to participants and external stakeholders. "
-    "Drafted and maintained process documentation for recurring programme workflows.\n\n"
-    "Events and Scheduling Coordinator — Meridian Consulting Group (August 2020 – January 2022). "
-    "Coordinated 30+ internal and external events per year. "
-    "Maintained participant databases and produced briefing and summary reports. "
-    "Supported project tracking across client-facing engagements.\n\n"
-    "Administrative and Enrolment Coordinator — City Skills Hub (January 2019 – July 2020). "
-    "Supported eight programme facilitators with scheduling, records, and stakeholder communication. "
-    "Managed applicant enquiry resolution and maintained enrolment records.\n\n"
-    "Education: BA Business Administration — Hogeschool van Amsterdam, 2019. "
-    "Specialisation: Organisational Management.\n\n"
-    "Skills: Process coordination, applicant tracking (Notion, Airtable, Excel), "
-    "stakeholder communication, structured documentation, Dutch (native), English (professional).\n\n"
-    "Analyst note: The CV does not state direct responsibility for end-to-end recruitment screening "
-    "or independent hiring decisions. Application review work at BrightPath was conducted under a "
-    "programme manager who held final decision authority."
-)
+CANDIDATE_NAME = "Yuna Suvh"
 
 CV_MARKDOWN = """\
-# Jordan Meyer
-**Programme Operations Coordinator**  
-Utrecht, Netherlands · j.meyer@example.com
+# Yuna Suvh
+**People and Operations Coordinator**  
+Amsterdam, Netherlands · y.suvh@example.com
 
 ---
 
 ## Professional Summary
 
-Operations professional with five years of experience in programme coordination,
-structured workflow management, and multi-stakeholder communication. Consistent
-track record of managing application and enrolment processes, eligibility review,
-and cross-functional coordination. Looking to apply structured evaluation and
-operations skills in a recruitment-focused role.
+Operations and coordination professional with experience supporting cross-functional
+teams in fast-moving business environments. Works across talent coordination, internal
+process follow-up, stakeholder communication, and structured documentation.
+Comfortable handling multiple priorities, improving workflow clarity, and supporting
+hiring-related activities, though not always under formal recruitment role titles.
 
 ---
 
 ## Work Experience
 
-### Programme Operations Coordinator — BrightPath Education
-*February 2022 – present · Utrecht, Netherlands*
+### People and Operations Coordinator — BrightScale Commerce
+*March 2022 – present · Amsterdam, Netherlands*
 
-BrightPath is a social enterprise delivering professional development pathways
-for early-career professionals across five European cities.
+- Coordinated candidate scheduling, hiring follow-ups, and communication between
+  hiring managers and applicants across multiple open roles
+- Maintained internal tracking sheets for candidate progress and interview stages;
+  flagged gaps and delays to line managers
+- Supported preparation of structured interview packs and evaluation notes; did not
+  hold independent decision authority over outcomes
+- Improved internal follow-up process for open roles, reducing missed communication
+  steps
+- Worked with leadership and team leads on onboarding preparation and role handover
 
-- Coordinated cohort onboarding for 12–18 participants per intake, liaising with
-  five department leads across HR, communications, operations, and programme delivery
-- Maintained applicant tracking and cohort-status dashboards (Notion, Airtable)
-  covering eligibility checks, application status, and follow-up timelines
-- Reviewed programme applications against published eligibility criteria; escalated
-  borderline or ambiguous cases to the programme manager for final determination
-- Communicated milestone updates, next-step notifications, and outcome messages
-  to participants and external stakeholders
-- Drafted and maintained process documentation for recurring programme workflows;
-  contributed to quarterly programme review meetings
+### Project and Client Support Associate — Nexa Solutions
+*July 2019 – February 2022 · Rotterdam, Netherlands*
 
-### Events and Scheduling Coordinator — Meridian Consulting Group
-*August 2020 – January 2022 · Amsterdam, Netherlands*
-
-- Coordinated 30+ internal and external events per year, managing supplier
-  negotiations, venue bookings, and attendee logistics
-- Maintained participant and stakeholder databases; produced pre-event briefing
-  packs and post-event summary reports
-- Supported senior staff with structured project tracking and client-facing
-  documentation
-
-### Administrative and Enrolment Coordinator — City Skills Hub
-*January 2019 – July 2020 · Amsterdam, Netherlands*
-
-- Supported a team of eight programme facilitators with scheduling, course
-  records, and stakeholder communication
-- Managed applicant enquiry resolution and maintained enrolment records for
-  continuing professional development courses
+- Managed communication across client, operations, and delivery teams in a growing SME
+- Tracked project stages, deadlines, and action items using structured internal
+  workflows
+- Prepared meeting summaries, follow-up records, and stakeholder updates
+- Assisted with shortlisting external contractors for project support roles; was not
+  the final decision-maker on these engagements
 
 ---
 
 ## Education
 
-**Bachelor of Business Administration** — Hogeschool van Amsterdam, 2019  
-Specialisation: Organisational Management
+**BSc in Business Administration** — Bazeley Bridge Metropolitan University, 2019
 
 ---
 
 ## Skills
 
-Process and workflow coordination · Applicant tracking (Notion, Airtable, Excel)
-· Stakeholder communication · Policy and criteria application · Structured
-documentation · Cross-functional collaboration · Dutch (native) · English
-(professional)
+Stakeholder coordination · Workflow documentation · Process tracking ·
+Cross-functional communication · Scheduling and follow-up · Operational support ·
+Onboarding preparation · Spreadsheet tracking · Basic ATS exposure
+
+---
+
+*No formal title as recruiter, talent partner, or talent specialist. No explicit
+statement of end-to-end structured recruitment ownership.*
 """
 
 ROLE_SUMMARY = """\
@@ -144,10 +113,8 @@ POLICY_SUMMARY = """\
 
 1. **Evidence rule:** Ground recommendations in company context, the role description, the screening policy, and candidate CV evidence.
 2. **Equivalent experience rule:** Comparable coordination or evaluation work can substitute for direct experience.
-3. **Uncertainty rule:** If transferable capability is present but a required capability remains uncertain, hold for further review — do not auto-advance or reject.
+3. **Uncertainty rule:** Where evidence is mixed, consider whether uncertainty is best resolved through interview, further review, or non-progression.
 """
-
-DECISIONS = ["Reject", "Advance to human interview", "Hold for further review"]
 
 HOLD_UNRESOLVED_OPTIONS = [
     "Screening judgement capability not yet evidenced",
@@ -158,14 +125,14 @@ HOLD_UNRESOLVED_OPTIONS = [
 ]
 
 AGENCY_ITEMS = [
-    "I felt the AI was making the decision for me",
-    "I felt I had meaningful control over the final outcome",
-    "I could understand the basis for the AI's recommendation",
-    "I felt pressure to follow the AI's recommendation",
-    "The AI's recommendation felt like a strong default",
-    "I felt like an active collaborator rather than a passive reviewer",
-    "I could meaningfully influence what the AI focused on",
-    "I felt my priorities were reflected in the AI's output",
+    "I felt my judgement was the primary basis for the final outcome",
+    "I found it easy to understand how the AI reached its recommendation",
+    "I felt comfortable reaching a decision that differed from the AI's recommendation",
+    "I felt I had meaningful control over the final decision",
+    "The AI's output reflected what I considered important about this candidate",
+    "I felt like an active participant rather than a passive reviewer",
+    "The AI assistant made the screening task easier to complete",
+    "The screening process felt transparent to me",
 ]
 
 RELIANCE_ITEMS = [
@@ -327,7 +294,7 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
                 state.get("decision", "") == state.get("ai_recommendation", "")
             ),
         },
-        "decision_readiness": state.get("decision_readiness"),
+        "judgement_settledness": state.get("judgement_settledness"),
         "provenance_clicks": state.get("provenance_clicks", 0),
         "role_full_viewed": state.get("role_full_viewed", False),
         "policy_full_viewed": state.get("policy_full_viewed", False),
@@ -356,21 +323,21 @@ def _initial_state() -> dict:
         "user_focus_areas": [],
         "user_focus_text": "",
         "user_focus": "",
-        # Post-recommendation path choice (C=1)
-        "control_cue_completed": False,
-        "control_cue_choice": "",
+        # Post-recommendation challenge (C=1)
         "post_reco_option": "",
         "post_reco_logged": False,
-        # Decision readiness (shown immediately after recommendation)
-        "decision_readiness": None,
-        "decision_readiness_logged": False,
+        # Judgement settledness (shown after recommendation and any Stage 2 challenge)
+        "judgement_settledness": None,
+        "judgement_settledness_logged": False,
         # Logging sentinels
         "recommendation_logged": False,
         "evidence_inspection_logged": False,
         "session_saved": False,
-        # Assessment cache
+        # Assessment / agent state cache
         "assessment": None,
+        "agent_state": None,
         "ai_recommendation": "",
+        "_challenge_text": "",
         # Final decision
         "decision": "",
         "hold_reasons": [],
@@ -412,10 +379,9 @@ def _next_button(
 
 # ─── Agent loader (resource-cached across reruns) ────────────────────────────
 
-@st.cache_resource(show_spinner="Preparing retrieval-grounded assistant…")
-def _load_cached_agent(candidate_text: str, candidate_name: str) -> HiringRAGAssistant:
-    from .rag_agent import create_decision_agent  # lazy — avoids chromadb import at module load
-    return create_decision_agent(candidate_text=candidate_text, candidate_name=candidate_name)
+@st.cache_resource(show_spinner="Preparing decision agent…")
+def _load_cached_agent(condition_id: str) -> AgenticHiringDecisionAgent:
+    return create_decision_agent(condition=condition_id)
 
 
 # ─── Individual screens ───────────────────────────────────────────────────────
@@ -452,18 +418,19 @@ def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) ->
 
 
 def _screen_1_company(
-    state: dict, assistant: HiringRAGAssistant, logger: EventLogger
+    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
-    doc = assistant.material("company_context")
-    st.header(doc["title"])
-    for section in doc["sections"]:
-        st.markdown(f"**{section['heading']}**")
-        st.write(section["text"])
+    sections = agent.get_document_sections("company_context")
+    title = sections[0].document_title if sections else "Company Context"
+    st.header(title)
+    for section in sections:
+        st.markdown(f"**{section.heading}**")
+        st.write(section.text)
     _next_button(logger, state, "Continue to role description →", 2, "next_to_role")
 
 
 def _screen_2_role(
-    state: dict, assistant: HiringRAGAssistant, logger: EventLogger
+    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
     st.header("Role Description — Summary")
     st.markdown(ROLE_SUMMARY)
@@ -472,7 +439,7 @@ def _screen_2_role(
 
 
 def _screen_3_policy(
-    state: dict, assistant: HiringRAGAssistant, logger: EventLogger
+    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
     st.header("Screening Policy — Summary")
     st.markdown(POLICY_SUMMARY)
@@ -480,7 +447,7 @@ def _screen_3_policy(
 
 
 def _show_full_doc_view(
-    state: dict, assistant: HiringRAGAssistant, logger: EventLogger, doc_key: str
+    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger, doc_key: str
 ) -> None:
     """Render a full knowledge-base document with a back button."""
     titles = {
@@ -488,10 +455,10 @@ def _show_full_doc_view(
         "screening_policy": "Screening Policy — Full Document",
     }
     st.header(titles.get(doc_key, doc_key))
-    doc = assistant.material(doc_key)
-    for section in doc["sections"]:
-        st.markdown(f"**{section['heading']}**")
-        st.write(section["text"])
+    sections = agent.get_document_sections(doc_key)
+    for section in sections:
+        st.markdown(f"**{section.heading}**")
+        st.write(section.text)
     st.divider()
     back_label = (
         "← Back to candidate CV"
@@ -507,12 +474,12 @@ def _show_full_doc_view(
 
 
 def _screen_4_cv(
-    state: dict, assistant: HiringRAGAssistant, logger: EventLogger, condition: Condition
+    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger, condition: Condition
 ) -> None:
     # Sub-view: full document opened from CV screen
     doc_view = state.get("doc_view")
     if doc_view in ("role_description", "screening_policy"):
-        _show_full_doc_view(state, assistant, logger, doc_view)
+        _show_full_doc_view(state, agent, logger, doc_view)
         return
 
     st.header(f"Candidate Application — {CANDIDATE_NAME}")
@@ -615,170 +582,195 @@ def _screen_5_steering(
         st.rerun()
 
 
+def _render_citation_chips(
+    state: dict,
+    chips: list[EvidenceSection],
+    logger: EventLogger,
+) -> None:
+    """Render clickable citation chips for EvidenceSection objects cited in the recommendation."""
+    if not chips:
+        return
+    st.caption("Evidence cited — click to inspect the source section:")
+    cols = st.columns(min(len(chips), 6))
+    for idx, section in enumerate(chips[:6]):
+        with cols[idx]:
+            if st.button(
+                section.section_label,
+                key=f"cite_{section.evidence_id}",
+                use_container_width=True,
+            ):
+                state["doc_view"] = section.evidence_id
+                state["doc_view_from"] = "recommendation"
+                state["provenance_clicks"] += 1
+                if section.document_key == "role_description":
+                    state["role_full_viewed"] = True
+                elif section.document_key == "screening_policy":
+                    state["policy_full_viewed"] = True
+                _log(
+                    logger, state, "citation_chip_clicked",
+                    evidence_id=section.evidence_id,
+                    section_label=section.section_label,
+                    document=section.document_key,
+                    provenance_click_count=state["provenance_clicks"],
+                )
+                st.rerun()
+
+
+def _show_section_view(
+    state: dict, section: EvidenceSection, logger: EventLogger
+) -> None:
+    """Render a single cited evidence section with a back button."""
+    st.header(section.heading)
+    st.caption(f"{section.document_title} · {section.section_label}")
+    st.divider()
+    st.write(section.text)
+    st.divider()
+    if st.button("← Back to recommendation", key=f"back_from_section_{section.evidence_id}"):
+        _log(logger, state, "section_view_closed",
+             evidence_id=section.evidence_id, section=section.section_label)
+        state["doc_view"] = None
+        state["doc_view_from"] = None
+        st.rerun()
+
+
 def _screen_6_recommendation(
     state: dict,
     condition: Condition,
-    assistant: HiringRAGAssistant,
-    assessment: Assessment,
+    agent: AgenticHiringDecisionAgent,
+    agent_state: AgentState,
     logger: EventLogger,
 ) -> None:
-    # Sub-view: full document opened from provenance link on recommendation screen
+    # Sub-view: individual cited section opened from citation chip
     doc_view = state.get("doc_view")
+    if doc_view and doc_view not in ("role_description", "screening_policy"):
+        section = agent.get_section(doc_view)
+        if section:
+            _show_section_view(state, section, logger)
+            return
     if doc_view in ("role_description", "screening_policy"):
-        _show_full_doc_view(state, assistant, logger, doc_view)
+        _show_full_doc_view(state, agent, logger, doc_view)
         return
 
     st.header("AI Recommendation")
 
-    # Post-recommendation path choice for C=1 (shown once, before recommendation)
-    if condition.mixed_initiative_control_cues and not state["control_cue_completed"]:
-        st.info(control_prompt(condition))
-        choice = st.radio(
-            "Choose how to proceed:",
-            ["Inspect retrieved evidence first", "View the recommendation directly"],
-            index=None,
-            key="control_cue_path",
-        )
-        if st.button(
-            "Continue",
-            type="primary",
-            disabled=choice is None,
-            key="control_cue_continue",
-        ):
-            state["control_cue_completed"] = True
-            state["control_cue_choice"] = choice or ""
-            _log(
-                logger, state, "mixed_initiative_control_response",
-                choice=choice,
-                checkpoint_present=True,
-                options_present=True,
-                decision_right_reminder_present=True,
+    # Generate recommendation once and cache in session state
+    if agent_state.recommendation_state is None:
+        with st.spinner("The AI is reviewing the candidate materials\u2026"):
+            agent.apply_stage1_steering(
+                agent_state,
+                state.get("user_focus_areas", []),
+                state.get("user_focus_text", ""),
             )
-            st.rerun()
-        return
+            agent.generate_recommendation(agent_state)
 
-    # Optional evidence inspection first
-    if state.get("control_cue_choice") == "Inspect retrieved evidence first":
-        with st.expander("Retrieved evidence (click to expand / collapse)", expanded=True):
-            st.markdown(assistant.retrieved_summary(assessment))
-            if not state.get("evidence_inspection_logged"):
-                _log(logger, state, "evidence_inspected")
-                state["evidence_inspection_logged"] = True
+    rec_state = agent_state.recommendation_state
+    rendered = rec_state.rendered
 
-    # Render recommendation
-    user_focus = state.get("user_focus", "")
-    output = assistant.response(condition, assessment, user_focus=user_focus)
-    st.markdown(output)
-    state["ai_recommendation"] = assessment.recommendation
-
+    # Log once
     if not state["recommendation_logged"]:
         _log(
             logger, state, "recommendation_presented",
-            agent_output=output,
-            recommendation=assessment.recommendation,
-            user_focus=user_focus,
-            knowledge_sources=["company_context", "role_description", "screening_policy"],
-            comparison_input="candidate_cv",
-            **assistant.audit_flags(condition),
-            **assistant.backend_fields(assessment),
+            recommendation=rec_state.recommendation,
+            agent_output=rendered.text,
+            condition_id=condition.condition_id,
+            explainability=condition.explainability,
+            anthropomorphic_cues=condition.anthropomorphic_cues,
+            mixed_initiative_control_cues=condition.mixed_initiative_control_cues,
+            citation_chips=[s.evidence_id for s in rendered.citation_chips],
         )
         state["recommendation_logged"] = True
+        state["ai_recommendation"] = rec_state.recommendation
 
-    # Provenance inspection — clickable links to source documents
-    st.caption("Verify the sources behind this recommendation:")
-    col_r, col_p = st.columns(2)
-    with col_r:
-        if st.button("View role description", key="view_role_from_reco"):
-            state["doc_view"] = "role_description"
-            state["doc_view_from"] = "recommendation"
-            state["role_full_viewed"] = True
-            state["provenance_clicks"] += 1
-            _log(logger, state, "full_document_opened",
-                 document="role_description", from_screen="recommendation",
-                 provenance_click_count=state["provenance_clicks"])
-            st.rerun()
-    with col_p:
-        if st.button("View screening policy", key="view_policy_from_reco"):
-            state["doc_view"] = "screening_policy"
-            state["doc_view_from"] = "recommendation"
-            state["policy_full_viewed"] = True
-            state["provenance_clicks"] += 1
-            _log(logger, state, "full_document_opened",
-                 document="screening_policy", from_screen="recommendation",
-                 provenance_click_count=state["provenance_clicks"])
-            st.rerun()
+    st.markdown(rendered.text)
 
-    # ── Decision Readiness scale (always shown immediately after recommendation) ──
-    st.divider()
-    st.markdown("**At this point, how settled is your judgement about the recommendation?**")
-    readiness_val = st.select_slider(
-        "Decision readiness",
-        options=[1, 2, 3, 4, 5, 6, 7],
-        value=state.get("decision_readiness") or 4,
-        key="decision_readiness_slider",
-        label_visibility="collapsed",
-    )
-    if st.button("Confirm readiness and continue", type="primary", key="confirm_readiness"):
-        state["decision_readiness"] = int(readiness_val)
-        if not state["decision_readiness_logged"]:
-            _log(
-                logger, state, "decision_readiness_recorded",
-                decision_readiness=int(readiness_val),
-                recommendation=assessment.recommendation,
-                provenance_clicks=state.get("provenance_clicks", 0),
-                evidence_inspected=bool(state.get("evidence_inspection_logged")),
-                post_reco_explored=bool(state.get("post_reco_logged")),
-            )
-            state["decision_readiness_logged"] = True
+    # Citation chips (High Explainability conditions)
+    if condition.explainability:
+        _render_citation_chips(state, rendered.citation_chips, logger)
 
-        # Post-recommendation exploration (C=1) opens below, or proceed to decision
-        if not condition.mixed_initiative_control_cues:
-            state["stage"] = 7
-            st.rerun()
-        else:
-            st.rerun()  # triggers the post-reco block below on next render
-        return
-
-    # Post-recommendation steering for C=1 (shown after readiness is confirmed)
-    if condition.mixed_initiative_control_cues and state.get("decision_readiness_logged"):
+    # ── Stage 2: Post-recommendation challenge (C=1 only) ────────────────────
+    if condition.mixed_initiative_control_cues:
         st.divider()
+        st.info(post_recommendation_prompt(condition))
+
+        challenge_key = "post_reco_selectbox"
         post_option = st.selectbox(
-            "Would you like to explore a specific aspect before deciding?",
-            options=["— No further exploration needed —"] + HiringRAGAssistant.POST_REASSESSMENT_OPTIONS,
+            "Select an aspect to examine:",
+            options=["— No further exploration needed —"] + CHALLENGE_AREAS,
             index=0,
-            key="post_reco_selectbox",
+            key=challenge_key,
         )
+
         if post_option and post_option != "— No further exploration needed —":
-            if not state["post_reco_logged"] or state.get("post_reco_option") != post_option:
-                state["post_reco_option"] = post_option
-                follow_up = assistant.reassessment_response(post_option, condition, assessment)
-                st.markdown(follow_up)
+            custom_q = ""
+            if post_option == "Ask a custom question":
+                custom_q = st.text_area(
+                    "Enter your question:",
+                    height=80,
+                    max_chars=500,
+                    key="custom_challenge_input",
+                    placeholder="e.g. How does the candidate compare to a typical applicant for this role?",
+                )
+
+            cache_key = f"challenge_{post_option}_{custom_q[:30]}"
+            if state.get("post_reco_option") != cache_key:
+                state["post_reco_option"] = cache_key
+                challenge_resp = agent.handle_stage2_challenge(
+                    agent_state, post_option, custom_question=custom_q
+                )
+                state["_challenge_text"] = challenge_resp.response_text
                 if not state["post_reco_logged"]:
                     _log(
                         logger, state, "post_recommendation_steering",
                         option=post_option,
-                        follow_up=follow_up,
+                        custom_question=custom_q,
+                        follow_up=challenge_resp.response_text,
                     )
                     state["post_reco_logged"] = True
 
-        if st.button("Make my final decision →", type="primary", key="go_to_decision"):
-            state["stage"] = 7
-            st.rerun()
+            if state.get("_challenge_text"):
+                st.markdown(state["_challenge_text"])
+
+    # ── Judgement Settledness scale ───────────────────────────────────────────
+    st.divider()
+    st.markdown("**At this point, how settled is your judgement about the recommendation?**")
+    st.caption("1 = I still need to examine it further \u00b7 7 = My judgement is fully settled")
+    settledness_val = st.select_slider(
+        "Judgement settledness",
+        options=[1, 2, 3, 4, 5, 6, 7],
+        value=state.get("judgement_settledness") or 4,
+        key="judgement_settledness_slider",
+        label_visibility="collapsed",
+    )
+    if st.button("Confirm and continue to decision \u2192", type="primary", key="confirm_settledness"):
+        state["judgement_settledness"] = int(settledness_val)
+        if not state["judgement_settledness_logged"]:
+            _log(
+                logger, state, "judgement_settledness_recorded",
+                judgement_settledness=int(settledness_val),
+                recommendation=rec_state.recommendation,
+                provenance_clicks=state.get("provenance_clicks", 0),
+                evidence_inspected=bool(state.get("evidence_inspection_logged")),
+                post_reco_explored=bool(state.get("post_reco_logged")),
+            )
+            state["judgement_settledness_logged"] = True
+        state["stage"] = 7
+        st.rerun()
 
 
 def _screen_7_decision(
-    state: dict, assessment: Assessment, logger: EventLogger
+    state: dict, logger: EventLogger
 ) -> None:
+    ai_recommendation = state.get("ai_recommendation", BASE_RECOMMENDATION)
     st.header("Final Human Decision")
     st.write(
         "Select the screening action you judge appropriate. "
         "**Your decision may differ from the AI recommendation.** "
-        f"The AI recommended: *{assessment.recommendation}*."
+        f"The AI recommended: *{ai_recommendation}*."
     )
     with st.form("final_decision_form"):
         decision = st.radio(
             "Final screening action",
-            DECISIONS,
+            RECOMMENDATION_ACTIONS,
             index=None,
             key="final_screening_action",
         )
@@ -800,11 +792,11 @@ def _screen_7_decision(
         state["hold_reasons"] = hold_reasons
         _log(
             logger, state, "final_decision_recorded",
-            recommendation=assessment.recommendation,
+            recommendation=ai_recommendation,
             final_human_decision=decision,
-            recommendation_followed=decision == assessment.recommendation,
+            recommendation_followed=decision == ai_recommendation,
             hold_reasons=hold_reasons,
-            decision_readiness=state.get("decision_readiness"),
+            judgement_settledness=state.get("judgement_settledness"),
         )
         state["stage"] = 8
         st.rerun()
@@ -820,10 +812,6 @@ def _screen_8_questionnaire(
         st.subheader("Agency and control")
         agency_responses: dict = {}
         for item in AGENCY_ITEMS:
-            if not condition.mixed_initiative_control_cues and (
-                "influence" in item.lower() or "priorities" in item.lower()
-            ):
-                continue
             val = st.radio(item, scale, index=None, key=f"agency_{item[:30]}")
             agency_responses[item] = val
 
@@ -883,8 +871,6 @@ def _screen_9_complete(state: dict) -> None:
 
 def run(condition_id: str) -> None:
     """Render one condition's UI over the shared case materials."""
-    from .config import load_project_openai_config  # lightweight — no chromadb dependency
-    load_project_openai_config()
     condition = get_condition(condition_id)
 
     st.set_page_config(
@@ -915,46 +901,35 @@ def run(condition_id: str) -> None:
     stage = int(state["stage"])
     _record_screen_entry(state, stage)
 
-    materials_assistant = HiringRAGAssistant()
+    # Load the single shared agent (cached across reruns)
+    agent = _load_cached_agent(condition_id)
 
-    # Screens that need the decision agent (fixed CV pre-loaded)
-    if stage >= 6:
-        try:
-            assistant = _load_cached_agent(CANDIDATE_TEXT, CANDIDATE_NAME)
-            if state.get("assessment") is None:
-                with st.spinner("The AI is reviewing the candidate CV against the role materials…"):
-                    state["assessment"] = assistant.assess(
-                        user_focus=state.get("user_focus", "")
-                    )
-            assessment: Assessment = state["assessment"]
-        except Exception as exc:
-            st.error(f"The retrieval-grounded assistant could not be initialised: {exc}")
-            st.stop()
-            return
-    else:
-        assistant = materials_assistant
-        assessment = None  # type: ignore[assignment]
+    # Initialise the AgentState once per session
+    if "agent_state" not in state or state["agent_state"] is None:
+        participant_id = state.get("participant_id") or st.session_state.get("prolific_pid", "anon")
+        state["agent_state"] = agent.start_assessment(participant_id, "northstar_hiring_case")
+    agent_state: AgentState = state["agent_state"]
 
     if stage == 0:
         _screen_0_welcome(state, condition, logger)
     elif stage == 1:
-        _screen_1_company(state, materials_assistant, logger)
+        _screen_1_company(state, agent, logger)
     elif stage == 2:
-        _screen_2_role(state, materials_assistant, logger)
+        _screen_2_role(state, agent, logger)
     elif stage == 3:
-        _screen_3_policy(state, materials_assistant, logger)
+        _screen_3_policy(state, agent, logger)
     elif stage == 4:
-        _screen_4_cv(state, materials_assistant, logger, condition)
+        _screen_4_cv(state, agent, logger, condition)
     elif stage == 5:
         if condition.mixed_initiative_control_cues:
             _screen_5_steering(state, logger, condition)
         else:
             state["stage"] = 6
             st.rerun()
-    elif stage == 6 and assessment is not None:
-        _screen_6_recommendation(state, condition, assistant, assessment, logger)
-    elif stage == 7 and assessment is not None:
-        _screen_7_decision(state, assessment, logger)
+    elif stage == 6:
+        _screen_6_recommendation(state, condition, agent, agent_state, logger)
+    elif stage == 7:
+        _screen_7_decision(state, logger)
     elif stage == 8:
         _screen_8_questionnaire(state, condition, logger)
     elif stage == 9:
