@@ -24,7 +24,6 @@ from .conditions import (
 )
 from .engine import Assessment, HiringRAGAssistant
 from .logger import EventLogger, restored_logger
-from .rag_agent import create_decision_agent, load_project_openai_config
 from .theme import apply_anthrokit_theme, show_study_banner
 
 # ─── Fixed study case ─────────────────────────────────────────────────────────
@@ -342,6 +341,7 @@ def _next_button(
 
 @st.cache_resource(show_spinner="Preparing retrieval-grounded assistant…")
 def _load_cached_agent(candidate_text: str, candidate_name: str) -> HiringRAGAssistant:
+    from .rag_agent import create_decision_agent  # lazy — avoids chromadb import at module load
     return create_decision_agent(candidate_text=candidate_text, candidate_name=candidate_name)
 
 
@@ -733,6 +733,7 @@ def _screen_9_complete(state: dict) -> None:
 
 def run(condition_id: str) -> None:
     """Render one condition's UI over the shared case materials."""
+    from .rag_agent import load_project_openai_config  # lazy — avoids chromadb import at module load
     load_project_openai_config()
     condition = get_condition(condition_id)
 

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+
+# Workaround: protobuf C extension is broken on Python 3.14; use pure-Python impl.
+os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 from pathlib import Path
 import re
 from typing import Iterable, Literal
