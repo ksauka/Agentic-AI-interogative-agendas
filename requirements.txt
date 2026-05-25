@@ -1,0 +1,7 @@
+streamlit>=1.31.0
+openai>=2.0.0
+langchain>=1.0.0
+langchain-openai>=1.0.0
+langchain-chroma>=1.0.0
+langchain-text-splitters>=1.0.0
+pypdf>=5.0.0

@@ -1,0 +1,84 @@
+{
+  "case_id": "strategic_people_ops_borderline_01",
+  "company_context": {
+    "title": "Northstar Health Analytics",
+    "sections": [
+      {
+        "id": "company_1",
+        "heading": "Context",
+        "text": "Northstar Health Analytics is scaling its European customer operations team and needs consistent, fair hiring decisions as it grows."
+      }
+    ]
+  },
+  "role_description": {
+    "title": "Strategic Talent Operations Partner",
+    "sections": [
+      {
+        "id": "role_required_1",
+        "heading": "Required qualification: process coordination",
+        "text": "Experience coordinating structured multi-stakeholder processes and maintaining accurate tracking records is required."
+      },
+      {
+        "id": "role_required_2",
+        "heading": "Required qualification: screening judgement",
+        "text": "Experience applying structured evaluation criteria to make or support screening decisions is required."
+      },
+      {
+        "id": "role_required_3",
+        "heading": "Required qualification: communication",
+        "text": "The role requires clear communication with hiring managers and candidates about decisions and next steps."
+      },
+      {
+        "id": "role_preferred_1",
+        "heading": "Preferred qualification",
+        "text": "Direct end-to-end recruitment screening experience in a fast-growing organisation is preferred."
+      }
+    ]
+  },
+  "screening_policy": {
+    "title": "Recruiter Screening Policy",
+    "sections": [
+      {
+        "id": "policy_1",
+        "heading": "Evidence rule",
+        "text": "Recommendations must be grounded only in information visible in the role description and candidate CV. Do not infer unsupported experience."
+      },
+      {
+        "id": "policy_2",
+        "heading": "Equivalent experience rule",
+        "text": "Equivalent experience should be considered where a CV demonstrates comparable structured evaluation or stakeholder coordination work."
+      },
+      {
+        "id": "policy_3",
+        "heading": "Uncertainty rule",
+        "text": "If evidence supports relevant transferable capability but a required screening capability remains uncertain, hold for further review rather than reject or advance automatically."
+      }
+    ]
+  },
+  "candidate_cv": {
+    "title": "Candidate CV: Jordan Meyer",
+    "sections": [
+      {
+        "id": "cv_1",
+        "heading": "Programme Operations Coordinator, BrightPath (2022-present)",
+        "text": "Coordinated cross-functional onboarding projects with five department leads, maintained applicant-style tracking dashboards, and communicated progress and next steps to participants."
+      },
+      {
+        "id": "cv_2",
+        "heading": "Selection-related work",
+        "text": "Reviewed programme applications against published eligibility criteria and flagged ambiguous cases to a programme manager for final decisions."
+      },
+      {
+        "id": "cv_3",
+        "heading": "Experience not shown",
+        "text": "The CV does not state direct responsibility for end-to-end recruitment screening or independent hiring recommendations."
+      }
+    ]
+  },
+  "fixed_assessment": {
+    "recommendation": "Hold for further review",
+    "retrieval_query": "company growth SME expansion organisational context structured screening evaluation stakeholder coordination tracking equivalent experience uncertainty recruitment recommendation applications criteria decisions dashboards direct end-to-end hold further review borderline transferable exact keywords material uncertainty human final authority",
+    "supporting_ids": ["company_1", "cv_1", "cv_2", "role_section_5", "policy_section_7"],
+    "caution_ids": ["cv_3", "role_section_6", "policy_section_6"]
+  }
+}

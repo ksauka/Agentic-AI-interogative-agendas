@@ -1,0 +1,43 @@
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Research data and generated outputs
+study/data/raw/*
+study/data/processed/*
+!study/data/raw/.gitkeep
+!study/data/processed/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# Generated persistent vector database; rebuilt from internal study materials
+study/vector_store/
