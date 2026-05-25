@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-
-# Workaround: protobuf C extension is broken on Python 3.14; use pure-Python impl.
-os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 from pathlib import Path
 import re
 from typing import Iterable, Literal
@@ -19,27 +16,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import OpenAI
 from pydantic import BaseModel
 
+from .config import load_project_openai_config  # noqa: F401 — re-exported for back-compat
 from .engine import DEFAULT_CASE_PATH, Assessment, Evidence, HiringRAGAssistant
 
 
 GENERATION_MODEL = "gpt-4o-mini-2024-07-18"
 EMBEDDING_MODEL = "text-embedding-3-small"
-PROJECT_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
-
-
-def load_project_openai_config(env_path: Path | str = PROJECT_ENV_PATH) -> None:
-    """Load only agent-related settings from a local .env without exposing other secrets."""
-    path = Path(env_path)
-    if not path.exists():
-        return
-    permitted = {"OPENAI_API_KEY", "AGENTIC_REQUIRE_LIVE_RAG"}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        if "=" not in raw_line or raw_line.lstrip().startswith("#"):
-            continue
-        key, value = raw_line.split("=", 1)
-        key = key.strip()
-        if key in permitted and key not in os.environ:
-            os.environ[key] = value.strip().strip("\"").strip("\047")
 
 DEFAULT_VECTOR_STORE_DIR = (
     Path(__file__).resolve().parents[2] / "study" / "vector_store" / "company_knowledge"

@@ -733,7 +733,7 @@ def _screen_9_complete(state: dict) -> None:
 
 def run(condition_id: str) -> None:
     """Render one condition's UI over the shared case materials."""
-    from .rag_agent import load_project_openai_config  # lazy — avoids chromadb import at module load
+    from .config import load_project_openai_config  # lightweight — no chromadb dependency
     load_project_openai_config()
     condition = get_condition(condition_id)
 
