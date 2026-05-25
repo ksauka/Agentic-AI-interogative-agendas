@@ -3,26 +3,45 @@
 from dataclasses import dataclass
 
 
-# ── Stage 1: pre-recommendation steering options (C=1) ─────────────────────
+# ── Stage 1: assessment preference options (C=1) ───────────────────────────
 FOCUS_AREAS = [
-    "Direct talent operations or recruitment coordination experience",
-    "Transferable coordination and process evidence",
-    "Structured screening, tracking, or evaluation support",
-    "Stakeholder communication and cross-functional coordination",
-    "Independent execution and process ownership",
-    "Fairness beyond exact keyword matching",
+    "Independent ownership",
+    "Communication and stakeholder management",
+    "Transferable experience",
+    "Screening and evaluation experience",
+    "Operational coordination",
+    "Growth potential",
+    "Something else",
 ]
 
-# ── Stage 2: post-recommendation challenge options (C=1) ───────────────────
-CHALLENGE_AREAS = [
-    "Show the strongest reason to advance the candidate",
-    "Show the strongest reason for caution",
-    "Identify which requirements remain uncertain",
-    "Explain what information is still missing",
-    "Reassess using a stricter interpretation of the screening policy",
-    "Reassess using more weight on transferable evidence",
-    "Ask a custom question",
+# ── Stage 2: additional review options — condition-dependent labels (C=1) ──
+CHALLENGE_AREAS_HIGH_A = [
+    "Show me the strongest evidence supporting interview progression",
+    "Show me the strongest reason for caution",
+    "Explain how transferable experience influenced the recommendation",
+    "Explain which role requirements are not fully demonstrated",
+    "Review the candidate using stricter criteria",
+    "Review the candidate with greater emphasis on growth potential",
+    "Ask a different question",
 ]
+
+CHALLENGE_AREAS_LOW_A = [
+    "Supporting evidence",
+    "Caution evidence",
+    "Transferable evidence interpretation",
+    "Unmet requirements",
+    "Stricter evaluation criteria",
+    "Growth potential emphasis",
+    "Other query",
+]
+
+# Legacy alias (kept for any external imports)
+CHALLENGE_AREAS = CHALLENGE_AREAS_HIGH_A
+
+
+def challenge_areas(condition: "Condition") -> list:
+    """Return the Stage 2 option list appropriate for this condition's anthropomorphism level."""
+    return CHALLENGE_AREAS_HIGH_A if condition.anthropomorphic_cues else CHALLENGE_AREAS_LOW_A
 
 # ── Fixed labels shared by all conditions ──────────────────────────────────
 RECOMMENDATION_ACTIONS = [
@@ -72,36 +91,29 @@ def get_condition(condition_id: str) -> Condition:
 
 
 def steering_prompt(condition: Condition) -> str:
-    """Return the pre-recommendation steering invitation for C=1 conditions."""
+    """Return the Stage 1 assessment-preference invitation for C=1 conditions."""
     if not condition.mixed_initiative_control_cues:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before I review the candidate, it would help to know what you want me to pay "
-            "closest attention to. Please select the aspects you consider most important for "
-            "this role, and add any specific concern if needed. I will take your priorities "
-            "into account when framing the recommendation."
+            "Before I review the candidate, it would help me to understand what matters "
+            "most to you for this role. Is there anything you would like me to pay "
+            "particular attention to?"
         )
     return (
-        "Before the assessment is generated, select the aspects that should receive "
-        "additional attention. Optional comments may be added to specify further screening "
-        "priorities. These priorities will be incorporated into the recommendation framing."
+        "Select any areas that should receive additional attention during candidate assessment."
     )
 
 
 def post_recommendation_prompt(condition: Condition) -> str:
-    """Return the post-recommendation challenge invitation for C=1 conditions."""
+    """Return the Stage 2 additional-review invitation for C=1 conditions."""
     if not condition.mixed_initiative_control_cues:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before you make your final decision, you can ask me to examine one part of the "
-            "recommendation more closely. You may want to check the strongest reason to advance "
-            "the candidate, the strongest reason for caution, or whether a stricter reading of "
-            "the policy would change the recommendation."
+            "Before you make your final decision, would you like me to look more closely "
+            "at any aspect of the candidate?"
         )
     return (
-        "Before the final decision, select one aspect of the recommendation for further "
-        "examination. Available options include supporting evidence, cautionary evidence, "
-        "policy interpretation, and missing information."
+        "Additional assessment options are available before you make your final decision."
     )

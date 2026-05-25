@@ -20,6 +20,7 @@ from .conditions import (
     Condition,
     FOCUS_AREAS,
     CHALLENGE_AREAS,
+    challenge_areas,
     post_recommendation_prompt,
     RECOMMENDATION_ACTIONS,
     BASE_RECOMMENDATION,
@@ -545,34 +546,51 @@ def _screen_4_cv(
 def _screen_5_steering(
     state: dict, logger: EventLogger, condition: Condition
 ) -> None:
-    """Pre-recommendation steering screen (C=1 conditions only)."""
-    st.header("Set Your Priorities")
-    st.markdown(steering_prompt(condition))
-    selected_areas = st.multiselect(
-        "Select the areas you want the AI to focus on (choose all that apply):",
-        options=FOCUS_AREAS,
-        default=state.get("user_focus_areas", []),
-        key="steering_focus_areas",
+    """Stage 1 assessment-preference screen (C=1 conditions only)."""
+    with st.chat_message("assistant"):
+        st.write(steering_prompt(condition))
+
+    # Checkboxes — one per focus area
+    selected: list[str] = []
+    for area in FOCUS_AREAS:
+        default_checked = area in state.get("user_focus_areas", [])
+        if st.checkbox(area, value=default_checked, key=f"focus_{area}"):
+            selected.append(area)
+
+    free_label = (
+        "Tell me anything else you'd like me to consider."
+        if condition.anthropomorphic_cues
+        else "Additional comments (optional):"
     )
     free_text = st.text_area(
-        "Add any specific priorities or concerns in your own words (optional):",
+        free_label,
         value=state.get("user_focus_text", ""),
-        height=100,
+        height=80,
         max_chars=500,
         key="steering_free_text",
-        placeholder="e.g. I want to understand whether the candidate can work independently.",
+        placeholder=(
+            "e.g. I want to understand whether the candidate can work independently."
+            if condition.anthropomorphic_cues
+            else "e.g. focus on evidence of direct recruitment ownership"
+        ),
     )
-    if st.button("Send priorities and get recommendation →", type="primary", key="submit_steering"):
-        state["user_focus_areas"] = selected_areas
+
+    btn_label = (
+        "Continue to recommendation"
+        if condition.anthropomorphic_cues
+        else "Generate recommendation"
+    )
+    if st.button(btn_label, type="primary", key="submit_steering"):
+        state["user_focus_areas"] = selected
         state["user_focus_text"] = free_text.strip()
-        focus_parts = list(selected_areas)
+        focus_parts = list(selected)
         if free_text.strip():
             focus_parts.append(free_text.strip())
         state["user_focus"] = "; ".join(focus_parts)
         state["user_steering_completed"] = True
         _log(
             logger, state, "pre_recommendation_steering",
-            user_focus_areas=selected_areas,
+            user_focus_areas=selected,
             user_focus_text=free_text.strip(),
             user_focus=state["user_focus"],
         )
@@ -705,8 +723,19 @@ def _screen_6_recommendation(
         else:
             st.write(rendered.text)
 
-    # ── Stage 2: Post-recommendation challenge (C=1 only) ────────────────────
-    _SKIP = "No — I'm ready to continue"
+    # ── Stage 2: Additional review request (C=1 only) ────────────────────────
+    _SKIP = (
+        "No — I'm ready to continue"
+        if condition.anthropomorphic_cues
+        else "No — continue to decision"
+    )
+    _CUSTOM_Q = (
+        "Ask a different question"
+        if condition.anthropomorphic_cues
+        else "Other query"
+    )
+    _areas = challenge_areas(condition)
+
     if condition.mixed_initiative_control_cues and not state.get("stage2_done"):
         has_response = bool(state.get("_challenge_text"))
 
@@ -720,10 +749,15 @@ def _screen_6_recommendation(
             with st.chat_message("assistant"):
                 st.write(state["_challenge_text"])
 
-        # Explore more / skip
+        # Select aspect to review
+        select_label = (
+            "What else would you like to examine?" if has_response
+            else "What would you like me to examine?" if condition.anthropomorphic_cues
+            else "Select an area for additional assessment:"
+        )
         post_option = st.selectbox(
-            "What else would you like to explore?" if has_response else "Select an aspect to examine:",
-            options=[_SKIP] + CHALLENGE_AREAS,
+            select_label,
+            options=[_SKIP] + _areas,
             index=0,
             key="post_reco_selectbox",
             label_visibility="collapsed",
@@ -734,17 +768,21 @@ def _screen_6_recommendation(
             st.rerun()
         elif post_option:
             custom_q = ""
-            if post_option == "Ask a custom question":
+            if post_option == _CUSTOM_Q:
                 custom_q = st.text_area(
-                    "Enter your question:",
+                    "What would you like me to examine?" if condition.anthropomorphic_cues else "Enter your query:",
                     height=80,
                     max_chars=500,
                     key="custom_challenge_input",
-                    placeholder="e.g. How does the candidate compare to a typical applicant for this role?",
+                    placeholder="e.g. How does the candidate's experience compare to typical applicants for this role?",
                 )
-
-            cache_key = f"challenge_{post_option}_{custom_q[:30]}"
-            if state.get("post_reco_option") != cache_key:
+            btn_label = (
+                "Review this aspect"
+                if condition.anthropomorphic_cues
+                else "Generate additional assessment"
+            )
+            if st.button(btn_label, type="primary", key="submit_challenge_btn"):
+                cache_key = f"challenge_{post_option}_{custom_q[:30]}"
                 state["post_reco_option"] = cache_key
                 challenge_resp = agent.handle_stage2_challenge(
                     agent_state, post_option, custom_question=custom_q
@@ -752,7 +790,7 @@ def _screen_6_recommendation(
                 state["_challenge_text"] = challenge_resp.response_text
                 if not state["post_reco_logged"]:
                     _log(
-                        logger, state, "post_recommendation_steering",
+                        logger, state, "additional_review_requested",
                         option=post_option,
                         custom_question=custom_q,
                         follow_up=challenge_resp.response_text,
@@ -870,6 +908,20 @@ def run(condition_id: str) -> None:
         initial_sidebar_state="collapsed",
     )
     apply_anthrokit_theme(st)
+    # Widen the content column and chat bubbles beyond Streamlit's default constraint
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stMain"] .block-container {
+            max-width: 900px !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+        div[data-testid="stChatMessageContent"] { max-width: 100% !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Qualtrics / Prolific gate
     _read_qualtrics_params()

@@ -193,6 +193,19 @@ _TRANSFERABLE_WEIGHT_RESPONSE = {
 }
 
 
+# ── Recommendation → grammatical verb phrase ──────────────────────────────────
+
+_PROSE_PHRASE: dict[str, str] = {
+    "Advance to human interview": "advance this candidate to a human interview",
+    "Hold for further review": "hold this candidate for further review",
+    "Reject application": "reject this application",
+}
+
+
+def _prose(recommendation: str) -> str:
+    return _PROSE_PHRASE.get(recommendation, recommendation.lower())
+
+
 # ── Main renderer ─────────────────────────────────────────────────────────────
 
 class RecommendationRenderer:
@@ -310,17 +323,29 @@ class RecommendationRenderer:
     ) -> str:
         key = self._condition_key(condition)
 
-        if "strongest evidence supporting" in challenge.lower() or "strongest reason to advance" in challenge.lower():
+        challenge_l = challenge.lower()
+
+        if (
+            "supporting" in challenge_l
+            or "advance" in challenge_l
+            or "progression" in challenge_l
+            or "strongest reason to advance" in challenge_l
+        ):
             return _SUPPORTING_EVIDENCE_RESPONSE[key]
-        if "caution" in challenge.lower() or "against" in challenge.lower():
+        if "caution" in challenge_l or "concern" in challenge_l:
             return _CAUTION_EVIDENCE_RESPONSE[key]
-        if "uncertain" in challenge.lower():
+        if (
+            "uncertain" in challenge_l
+            or "unmet" in challenge_l
+            or "not fully" in challenge_l
+            or "not clearly" in challenge_l
+        ):
             return _UNCERTAIN_REQUIREMENTS_RESPONSE[key]
-        if "missing" in challenge.lower():
+        if "missing" in challenge_l:
             return _MISSING_INFORMATION_RESPONSE[key]
-        if "stricter" in challenge.lower():
+        if "stricter" in challenge_l or "strict" in challenge_l:
             return _STRICTER_POLICY_RESPONSE[key]
-        if "transferable" in challenge.lower():
+        if "transferable" in challenge_l or "growth" in challenge_l or "potential" in challenge_l:
             return _TRANSFERABLE_WEIGHT_RESPONSE[key]
         # Custom question fallback
         if condition.anthropomorphic_cues:
