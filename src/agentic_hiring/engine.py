@@ -235,50 +235,50 @@ class HiringRAGAssistant:
     def _response_high_e_high_a(self, rec: str, basis: dict) -> str:
         candidate_ev = basis.get("candidate_evidence", "relevant coordination and process experience")
         uncertain = basis.get("uncertain_capability", "direct end-to-end talent screening ownership")
-        role_cite = basis.get("role_citation", "Section 5.4")
+        role_cite = basis.get("role_citation", "Section 5.2")
         policy_cite = basis.get("policy_citation", "Section 7.2")
         company_basis = basis.get("company_basis", "the organisation's operational context")
         return (
-            f"I would currently recommend: **{rec}**.\n\n"
-            f"There are some genuinely relevant strengths here — {candidate_ev}. "
-            f"This maps well onto the coordination and structured-execution expectations in "
-            f"[{role_cite} of the Role Description](#role_description), which is meaningful. "
-            f"What gives me pause is that {uncertain}, so I would not move straight to interview "
-            f"with confidence. At the same time, the screening policy makes clear in "
+            f"I would keep this candidate in consideration rather than screen them out at this stage. "
+            f"There is meaningful evidence of {candidate_ev}, which fits important parts of this role — "
+            f"especially the coordination and independent execution expectations in "
+            f"[{role_cite} of the Role Description](#role_description). "
+            f"What gives me pause is that {uncertain}, so I would not move straight to interview with confidence. "
+            f"At the same time, the screening policy makes clear in "
             f"[{policy_cite} of the Screening Policy](#screening_policy) that exact role wording "
             f"should not be treated as decisive where transferable evidence is present. "
-            f"Given {company_basis}, my recommendation is to keep this candidate under further "
-            f"review rather than closing the door now. The final call is yours."
+            f"Given {company_basis}, my recommendation is **{rec}** — "
+            f"keeping the application under active review. The final call is yours."
         )
 
     def _response_high_e_low_a(self, rec: str, basis: dict) -> str:
         candidate_ev = basis.get("candidate_evidence", "partial coordination and process evidence")
         uncertain = basis.get("uncertain_capability", "direct end-to-end talent screening ownership")
-        role_cite = basis.get("role_citation", "Section 5.4")
+        role_cite = basis.get("role_citation", "Section 5.2")
         policy_cite = basis.get("policy_citation", "Section 7.2")
         company_basis = basis.get("company_basis", "the organisation is scaling and needs reliable talent coordination")
         return (
-            f"**Recommendation: {rec}.**\n\n"
-            f"Company-context basis: {company_basis}. "
-            f"The candidate shows {candidate_ev}, consistent with "
+            f"**Assessment:** The candidate shows {candidate_ev}, consistent with "
             f"[{role_cite} of the Role Description](#role_description). "
             f"However, {uncertain} is not clearly demonstrated. "
+            f"Company context: {company_basis}. "
             f"Under [{policy_cite} of the Screening Policy](#screening_policy), "
-            f"transferable evidence should be weighed where direct wording is absent. "
-            f"The evidence supports continued review rather than immediate rejection or progression."
+            f"transferable evidence should be weighed where direct wording is absent.\n\n"
+            f"**Recommended action: {rec}.**"
         )
 
     def _response_low_e_high_a(self, rec: str) -> str:
         return (
-            f"I would currently recommend: **{rec}**.\n\n"
-            f"I have reviewed the candidate against the role materials and prepared this "
-            f"recommendation for your consideration. The final screening decision remains yours."
+            f"I have reviewed the candidate against the role materials. "
+            f"There are some relevant strengths here, though the picture is not entirely clear-cut. "
+            f"My recommendation is **{rec}**.\n\n"
+            f"The final screening decision remains yours."
         )
 
     def _response_low_e_low_a(self, rec: str) -> str:
         return (
-            f"**Recommendation: {rec}.**\n\n"
-            f"Screening assessment complete. Select a final screening action."
+            f"**Assessment:** Available evidence is incomplete for immediate progression.\n\n"
+            f"**Recommended action: {rec}.**"
         )
 
     POST_REASSESSMENT_OPTIONS = [

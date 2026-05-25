@@ -261,6 +261,8 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
         },
         "decision_readiness": state.get("decision_readiness"),
         "provenance_clicks": state.get("provenance_clicks", 0),
+        "role_full_viewed": state.get("role_full_viewed", False),
+        "policy_full_viewed": state.get("policy_full_viewed", False),
         "screen_dwell_times": state.get("screen_enter_times", {}),
         "questionnaire": state.get("questionnaire_responses", {}),
     }
@@ -310,6 +312,9 @@ def _initial_state() -> dict:
         "provenance_clicks": 0,
         # Timing
         "screen_enter_times": {},
+        # Document navigation (full-doc sub-views)
+        "doc_view": None,
+        "doc_view_from": None,
         # Questionnaire
         "questionnaire_responses": {},
     }
@@ -394,12 +399,7 @@ def _screen_2_role(
 ) -> None:
     st.header("Role Description — Summary")
     st.markdown(ROLE_SUMMARY)
-    with st.expander("View full role description document"):
-        state["role_full_viewed"] = True
-        doc = assistant.material("role_description")
-        for section in doc["sections"]:
-            st.markdown(f"**{section['heading']}**")
-            st.write(section["text"])
+
     _next_button(logger, state, "Continue to screening policy →", 3, "next_to_policy")
 
 
@@ -408,53 +408,88 @@ def _screen_3_policy(
 ) -> None:
     st.header("Screening Policy — Summary")
     st.markdown(POLICY_SUMMARY)
-    with st.expander("View full screening policy document"):
-        state["policy_full_viewed"] = True
-        doc = assistant.material("screening_policy")
-        for section in doc["sections"]:
-            st.markdown(f"**{section['heading']}**")
-            st.write(section["text"])
     _next_button(logger, state, "Continue to candidate CV →", 4, "next_to_cv")
+
+
+def _show_full_doc_view(
+    state: dict, assistant: HiringRAGAssistant, logger: EventLogger, doc_key: str
+) -> None:
+    """Render a full knowledge-base document with a back button."""
+    titles = {
+        "role_description": "Role Description — Full Document",
+        "screening_policy": "Screening Policy — Full Document",
+    }
+    st.header(titles.get(doc_key, doc_key))
+    doc = assistant.material(doc_key)
+    for section in doc["sections"]:
+        st.markdown(f"**{section['heading']}**")
+        st.write(section["text"])
+    st.divider()
+    back_label = (
+        "← Back to candidate CV"
+        if state.get("doc_view_from") == "cv"
+        else "← Back to recommendation"
+    )
+    if st.button(back_label, key=f"back_from_{doc_key}"):
+        _log(logger, state, "full_document_closed",
+             document=doc_key, from_screen=state.get("doc_view_from"))
+        state["doc_view"] = None
+        state["doc_view_from"] = None
+        st.rerun()
 
 
 def _screen_4_cv(
     state: dict, assistant: HiringRAGAssistant, logger: EventLogger, condition: Condition
 ) -> None:
+    # Sub-view: full document opened from CV screen
+    doc_view = state.get("doc_view")
+    if doc_view in ("role_description", "screening_policy"):
+        _show_full_doc_view(state, assistant, logger, doc_view)
+        return
+
     st.header("Candidate CV")
     st.markdown(CV_MARKDOWN)
     st.divider()
-    col_a, col_b = st.columns(2)
-    with col_a:
-        with st.expander("Reference: role description"):
-            doc = assistant.material("role_description")
-            for section in doc["sections"]:
-                st.markdown(f"**{section['heading']}**")
-                st.write(section["text"])
-            state["provenance_clicks"] += 1
-    with col_b:
-        with st.expander("Reference: screening policy"):
-            doc = assistant.material("screening_policy")
-            for section in doc["sections"]:
-                st.markdown(f"**{section['heading']}**")
-                st.write(section["text"])
-            state["provenance_clicks"] += 1
-    st.divider()
+
     next_label = (
         "Set my priorities before seeing the recommendation →"
         if condition.mixed_initiative_control_cues
         else "Request AI recommendation →"
     )
     next_screen = 5 if condition.mixed_initiative_control_cues else 6
-    if st.button(next_label, type="primary", key="proceed_from_cv"):
-        _log(
-            logger, state, "candidate_cv_viewed",
-            role_full_viewed=state["role_full_viewed"],
-            policy_full_viewed=state["policy_full_viewed"],
-            provenance_clicks=state["provenance_clicks"],
-            candidate_name=CANDIDATE_NAME,
-        )
-        state["stage"] = next_screen
-        st.rerun()
+
+    col_main, col_role, col_policy = st.columns([2, 1, 1])
+    with col_main:
+        if st.button(next_label, type="primary", key="proceed_from_cv"):
+            _log(
+                logger, state, "candidate_cv_viewed",
+                role_full_viewed=state.get("role_full_viewed", False),
+                policy_full_viewed=state.get("policy_full_viewed", False),
+                provenance_clicks=state.get("provenance_clicks", 0),
+                candidate_name=CANDIDATE_NAME,
+            )
+            state["stage"] = next_screen
+            st.rerun()
+    with col_role:
+        if st.button("View full role description", key="view_role_from_cv"):
+            state["doc_view"] = "role_description"
+            state["doc_view_from"] = "cv"
+            state["role_full_viewed"] = True
+            state["provenance_clicks"] += 1
+            _log(logger, state, "full_document_opened",
+                 document="role_description", from_screen="cv",
+                 provenance_click_count=state["provenance_clicks"])
+            st.rerun()
+    with col_policy:
+        if st.button("View full screening policy", key="view_policy_from_cv"):
+            state["doc_view"] = "screening_policy"
+            state["doc_view_from"] = "cv"
+            state["policy_full_viewed"] = True
+            state["provenance_clicks"] += 1
+            _log(logger, state, "full_document_opened",
+                 document="screening_policy", from_screen="cv",
+                 provenance_click_count=state["provenance_clicks"])
+            st.rerun()
 
 
 def _screen_5_steering(
@@ -502,6 +537,12 @@ def _screen_6_recommendation(
     assessment: Assessment,
     logger: EventLogger,
 ) -> None:
+    # Sub-view: full document opened from provenance link on recommendation screen
+    doc_view = state.get("doc_view")
+    if doc_view in ("role_description", "screening_policy"):
+        _show_full_doc_view(state, assistant, logger, doc_view)
+        return
+
     st.header("AI Recommendation")
 
     # Post-recommendation path choice for C=1 (shown once, before recommendation)
@@ -557,6 +598,30 @@ def _screen_6_recommendation(
             **assistant.backend_fields(assessment),
         )
         state["recommendation_logged"] = True
+
+    # Provenance inspection — clickable links to source documents
+    st.caption("Verify the sources behind this recommendation:")
+    col_r, col_p = st.columns(2)
+    with col_r:
+        if st.button("View role description", key="view_role_from_reco"):
+            state["doc_view"] = "role_description"
+            state["doc_view_from"] = "recommendation"
+            state["role_full_viewed"] = True
+            state["provenance_clicks"] += 1
+            _log(logger, state, "full_document_opened",
+                 document="role_description", from_screen="recommendation",
+                 provenance_click_count=state["provenance_clicks"])
+            st.rerun()
+    with col_p:
+        if st.button("View screening policy", key="view_policy_from_reco"):
+            state["doc_view"] = "screening_policy"
+            state["doc_view_from"] = "recommendation"
+            state["policy_full_viewed"] = True
+            state["provenance_clicks"] += 1
+            _log(logger, state, "full_document_opened",
+                 document="screening_policy", from_screen="recommendation",
+                 provenance_click_count=state["provenance_clicks"])
+            st.rerun()
 
     # ── Decision Readiness scale (always shown immediately after recommendation) ──
     st.divider()
