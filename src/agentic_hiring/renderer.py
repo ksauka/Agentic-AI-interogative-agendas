@@ -228,12 +228,12 @@ class RecommendationRenderer:
             if condition.anthropomorphic_cues:
                 focus_prefix = (
                     f"You asked me to pay particular attention to {areas}. "
-                    "I've kept those priorities in mind in my review below.\n\n"
+                    "I have kept those priorities in mind in my review below. "
                 )
             else:
                 focus_prefix = (
-                    f"The following assessment incorporates the user-specified "
-                    f"priorities: {areas}.\n\n"
+                    f"This assessment incorporates the user-specified "
+                    f"priorities: {areas}. "
                 )
 
         if not condition.explainability and not condition.anthropomorphic_cues:
@@ -247,50 +247,54 @@ class RecommendationRenderer:
     @staticmethod
     def _low_e_low_a(recommendation: str) -> str:
         return (
-            f"**Recommendation: {recommendation}.**\n\n"
-            "The candidate shows evidence of process coordination, applicant tracking, "
-            "and stakeholder communication. Some requirements are only partially evidenced."
+            f"The assessment outcome is to {recommendation.lower()} this candidate. "
+            "The CV shows evidence of process coordination, applicant tracking, and "
+            "stakeholder communication that aligns with the role's core requirements. "
+            "Some requirements are only partially evidenced, which may be worth "
+            "exploring at interview."
         )
 
     @staticmethod
     def _low_e_high_a(recommendation: str) -> str:
         return (
-            f"After reviewing the candidate's materials, I would **{recommendation.lower()}**.\n\n"
+            "After reviewing the candidate's materials, I would recommend to "
+            f"{recommendation.lower()} this candidate. "
             "There are useful signs of coordination experience and the ability to work "
             "across stakeholders — which is relevant here. Some areas would benefit "
-            "from closer examination, but the overall picture seems sufficient to "
-            "continue the process."
+            "from closer examination at interview, but the overall picture seems "
+            "sufficient to continue the process."
         )
 
     @staticmethod
     def _high_e_low_a(recommendation: str) -> str:
         return (
-            f"**Recommendation: {recommendation}.**\n\n"
-            "The candidate demonstrates evidence of process coordination (Section 5.2) "
-            "and stakeholder management (Section 5.5) that aligns with role requirements. "
-            "Evidence of structured evaluation support is present but does not clearly "
-            "establish independent decision authority (Section 5.4).\n\n"
-            "Screening policy guidance states that transferable evidence may satisfy "
-            "required qualifications where direct wording is absent (Section 7.2, "
-            "Section 7.3). The candidate's coordination work constitutes credible "
-            "transferable evidence for the primary required capabilities.\n\n"
-            "The primary uncertainty — direct end-to-end recruitment ownership — is "
-            "interpretable through interview rather than disqualifying at this stage."
+            "Based on the available materials, the assessment outcome is to "
+            f"{recommendation.lower()} this candidate. "
+            "The CV demonstrates evidence of process coordination (Section 5.2) and "
+            "stakeholder management (Section 5.5) that aligns with the role's required "
+            "capabilities. Evidence of structured evaluation support is present but "
+            "does not clearly establish independent decision authority (Section 5.4). "
+            "The screening policy allows transferable evidence to satisfy required "
+            "qualifications where direct wording is absent (Sections 7.2 and 7.3). "
+            "The candidate's coordination work constitutes credible transferable "
+            "evidence for the primary required capabilities. The main remaining "
+            "uncertainty — direct end-to-end recruitment ownership — is best examined "
+            "at interview rather than treated as grounds for exclusion at this stage."
         )
 
     @staticmethod
     def _high_e_high_a(recommendation: str) -> str:
         return (
-            f"After reviewing the CV, I would recommend to **{recommendation.lower()}**.\n\n"
-            "What stands out most is the candidate's coordination experience: "
-            "scheduling, applicant tracking, and communication across hiring managers "
-            "and applicants. This maps closely to Section 5.2 and Section 5.5 of the "
-            "role description.\n\n"
-            "The part that gives me some hesitation is that the CV doesn't clearly show "
-            "ownership of end-to-end recruitment screening — which Section 5.4 "
+            "After reviewing the CV, I would recommend to "
+            f"{recommendation.lower()} this candidate. "
+            "What stands out most is the coordination experience: scheduling, applicant "
+            "tracking, and communication across hiring managers and applicants, which "
+            "maps closely to Section 5.2 and Section 5.5 of the role description. "
+            "The part that gives me some hesitation is that the CV does not clearly "
+            "show ownership of end-to-end recruitment screening, which Section 5.4 "
             "identifies as a key area. That said, the screening policy specifically "
             "says that transferable evidence can count where equivalent capability is "
-            "visible, even without exact wording — see Section 7.2 and Section 7.3.\n\n"
+            "visible, even without exact wording — see Sections 7.2 and 7.3. "
             "Given the coordination strengths and the policy support for transferable "
             "evidence, I think this candidate merits interview progression rather than "
             "screening out at this stage."

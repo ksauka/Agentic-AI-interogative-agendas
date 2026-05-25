@@ -681,11 +681,11 @@ def _screen_6_recommendation(
         state["recommendation_logged"] = True
         state["ai_recommendation"] = rec_state.recommendation
 
-    st.markdown(rendered.text)
-
-    # Citation chips (High Explainability conditions)
-    if condition.explainability:
-        _render_citation_chips(state, rendered.citation_chips, logger)
+    with st.chat_message("assistant"):
+        st.write(rendered.text)
+        # Citation chips inside bubble (High Explainability conditions)
+        if condition.explainability:
+            _render_citation_chips(state, rendered.citation_chips, logger)
 
     # ── Stage 2: Post-recommendation challenge (C=1 only) ────────────────────
     if condition.mixed_initiative_control_cues:
@@ -728,7 +728,8 @@ def _screen_6_recommendation(
                     state["post_reco_logged"] = True
 
             if state.get("_challenge_text"):
-                st.markdown(state["_challenge_text"])
+                with st.chat_message("assistant"):
+                    st.write(state["_challenge_text"])
 
     # ── Judgement Settledness scale ───────────────────────────────────────────
     st.divider()
