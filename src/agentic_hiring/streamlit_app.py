@@ -323,6 +323,7 @@ def _initial_state() -> dict:
         # Post-recommendation challenge (C=1)
         "post_reco_option": "",
         "post_reco_logged": False,
+        "stage2_done": False,
         # Judgement settledness (shown after recommendation and any Stage 2 challenge)
         "judgement_settledness": None,
         "judgement_settledness_logged": False,
@@ -579,38 +580,60 @@ def _screen_5_steering(
         st.rerun()
 
 
-def _render_citation_chips(
+def _colorize_section_refs(text: str, label_map: dict) -> str:
+    """Replace cited Section X.Y labels in text with blue HTML spans."""
+    import re
+
+    def _sub(m: re.Match) -> str:
+        label = m.group(0)
+        if label in label_map:
+            return (
+                f'<span style="color:#2563eb;font-weight:600;'
+                f'cursor:pointer">{label}</span>'
+            )
+        return label
+
+    return re.sub(r"Section\s+\d+\.\d+", _sub, text)
+
+
+def _render_inline_citations(
     state: dict,
+    text: str,
     chips: list[EvidenceSection],
     logger: EventLogger,
 ) -> None:
-    """Render clickable citation chips for EvidenceSection objects cited in the recommendation."""
-    if not chips:
-        return
-    st.caption("Evidence cited — click to inspect the source section:")
-    cols = st.columns(min(len(chips), 6))
-    for idx, section in enumerate(chips[:6]):
-        with cols[idx]:
-            if st.button(
-                section.section_label,
-                key=f"cite_{section.evidence_id}",
-                use_container_width=True,
-            ):
-                state["doc_view"] = section.evidence_id
-                state["doc_view_from"] = "recommendation"
-                state["provenance_clicks"] += 1
-                if section.document_key == "role_description":
-                    state["role_full_viewed"] = True
-                elif section.document_key == "screening_policy":
-                    state["policy_full_viewed"] = True
-                _log(
-                    logger, state, "citation_chip_clicked",
-                    evidence_id=section.evidence_id,
-                    section_label=section.section_label,
-                    document=section.document_key,
-                    provenance_click_count=state["provenance_clicks"],
-                )
-                st.rerun()
+    """Render recommendation text with section references colored inline; chips as compact pills."""
+    if chips:
+        label_map = {s.section_label: s for s in chips}
+        colored = _colorize_section_refs(text, label_map)
+        st.markdown(colored, unsafe_allow_html=True)
+        # Compact clickable pills — no caption header
+        cols = st.columns(min(len(chips), 6))
+        for idx, section in enumerate(chips[:6]):
+            with cols[idx]:
+                if st.button(
+                    section.section_label,
+                    key=f"cite_{section.evidence_id}",
+                    use_container_width=True,
+                    help=section.heading,
+                ):
+                    state["doc_view"] = section.evidence_id
+                    state["doc_view_from"] = "recommendation"
+                    state["provenance_clicks"] += 1
+                    if section.document_key == "role_description":
+                        state["role_full_viewed"] = True
+                    elif section.document_key == "screening_policy":
+                        state["policy_full_viewed"] = True
+                    _log(
+                        logger, state, "citation_chip_clicked",
+                        evidence_id=section.evidence_id,
+                        section_label=section.section_label,
+                        document=section.document_key,
+                        provenance_click_count=state["provenance_clicks"],
+                    )
+                    st.rerun()
+    else:
+        st.write(text)
 
 
 def _show_section_view(
@@ -648,8 +671,6 @@ def _screen_6_recommendation(
         _show_full_doc_view(state, agent, logger, doc_view)
         return
 
-    st.header("AI Recommendation")
-
     # Generate recommendation once and cache in session state
     if agent_state.recommendation_state is None:
         with st.spinner("The AI is reviewing the candidate materials\u2026"):
@@ -679,25 +700,39 @@ def _screen_6_recommendation(
         state["ai_recommendation"] = rec_state.recommendation
 
     with st.chat_message("assistant"):
-        st.write(rendered.text)
-        # Citation chips inside bubble (High Explainability conditions)
-        if condition.explainability:
-            _render_citation_chips(state, rendered.citation_chips, logger)
+        if condition.explainability and rendered.citation_chips:
+            _render_inline_citations(state, rendered.text, rendered.citation_chips, logger)
+        else:
+            st.write(rendered.text)
 
     # ── Stage 2: Post-recommendation challenge (C=1 only) ────────────────────
-    if condition.mixed_initiative_control_cues:
-        st.divider()
-        st.info(post_recommendation_prompt(condition))
+    _SKIP = "No — I'm ready to continue"
+    if condition.mixed_initiative_control_cues and not state.get("stage2_done"):
+        has_response = bool(state.get("_challenge_text"))
 
-        challenge_key = "post_reco_selectbox"
+        # Invitation bubble — only before the first challenge response
+        if not has_response:
+            with st.chat_message("assistant"):
+                st.write(post_recommendation_prompt(condition))
+
+        # Previous challenge response bubble
+        if has_response:
+            with st.chat_message("assistant"):
+                st.write(state["_challenge_text"])
+
+        # Explore more / skip
         post_option = st.selectbox(
-            "Select an aspect to examine:",
-            options=["— No further exploration needed —"] + CHALLENGE_AREAS,
+            "What else would you like to explore?" if has_response else "Select an aspect to examine:",
+            options=[_SKIP] + CHALLENGE_AREAS,
             index=0,
-            key=challenge_key,
+            key="post_reco_selectbox",
+            label_visibility="collapsed",
         )
 
-        if post_option and post_option != "— No further exploration needed —":
+        if post_option == _SKIP:
+            state["stage2_done"] = True
+            st.rerun()
+        elif post_option:
             custom_q = ""
             if post_option == "Ask a custom question":
                 custom_q = st.text_area(
@@ -723,36 +758,40 @@ def _screen_6_recommendation(
                         follow_up=challenge_resp.response_text,
                     )
                     state["post_reco_logged"] = True
-
-            if state.get("_challenge_text"):
-                with st.chat_message("assistant"):
-                    st.write(state["_challenge_text"])
+                st.rerun()
 
     # ── Judgement Settledness scale ───────────────────────────────────────────
-    st.divider()
-    st.markdown("**At this point, how settled is your judgement about the recommendation?**")
-    st.caption("1 = I still need to examine it further \u00b7 7 = My judgement is fully settled")
-    settledness_val = st.select_slider(
-        "Judgement settledness",
-        options=[1, 2, 3, 4, 5, 6, 7],
-        value=state.get("judgement_settledness") or 4,
-        key="judgement_settledness_slider",
-        label_visibility="collapsed",
+    # C=0: always shown. C=1: only after at least one challenge OR explicit skip.
+    show_settledness = (
+        not condition.mixed_initiative_control_cues
+        or state.get("stage2_done")
+        or bool(state.get("_challenge_text"))
     )
-    if st.button("Confirm and continue to decision \u2192", type="primary", key="confirm_settledness"):
-        state["judgement_settledness"] = int(settledness_val)
-        if not state["judgement_settledness_logged"]:
-            _log(
-                logger, state, "judgement_settledness_recorded",
-                judgement_settledness=int(settledness_val),
-                recommendation=rec_state.recommendation,
-                provenance_clicks=state.get("provenance_clicks", 0),
-                evidence_inspected=bool(state.get("evidence_inspection_logged")),
-                post_reco_explored=bool(state.get("post_reco_logged")),
-            )
-            state["judgement_settledness_logged"] = True
-        state["stage"] = 7
-        st.rerun()
+    if show_settledness:
+        st.divider()
+        st.markdown("**At this point, how settled is your judgement about the recommendation?**")
+        st.caption("1 = I still need to examine it further · 7 = My judgement is fully settled")
+        settledness_val = st.select_slider(
+            "Judgement settledness",
+            options=[1, 2, 3, 4, 5, 6, 7],
+            value=state.get("judgement_settledness") or 4,
+            key="judgement_settledness_slider",
+            label_visibility="collapsed",
+        )
+        if st.button("Confirm and continue to decision →", type="primary", key="confirm_settledness"):
+            state["judgement_settledness"] = int(settledness_val)
+            if not state["judgement_settledness_logged"]:
+                _log(
+                    logger, state, "judgement_settledness_recorded",
+                    judgement_settledness=int(settledness_val),
+                    recommendation=rec_state.recommendation,
+                    provenance_clicks=state.get("provenance_clicks", 0),
+                    evidence_inspected=bool(state.get("evidence_inspection_logged")),
+                    post_reco_explored=bool(state.get("post_reco_logged")),
+                )
+                state["judgement_settledness_logged"] = True
+            state["stage"] = 7
+            st.rerun()
 
 
 def _screen_7_decision(
@@ -791,48 +830,6 @@ def _screen_7_decision(
             recommendation_followed=decision == ai_recommendation,
             hold_reasons=hold_reasons,
             judgement_settledness=state.get("judgement_settledness"),
-        )
-        state["stage"] = 8
-        st.rerun()
-
-
-def _screen_8_questionnaire(
-    state: dict, condition: Condition, logger: EventLogger
-) -> None:
-    st.header("Study Questionnaire")
-    st.write("Please answer the following questions about your experience.")
-    scale = ["1 — Strongly disagree", "2", "3", "4", "5 — Strongly agree"]
-    with st.form("questionnaire_form"):
-        st.subheader("Agency and control")
-        agency_responses: dict = {}
-        for item in AGENCY_ITEMS:
-            val = st.radio(item, scale, index=None, key=f"agency_{item[:30]}")
-            agency_responses[item] = val
-
-        st.subheader("Reliance")
-        reliance_responses: dict = {}
-        for item in RELIANCE_ITEMS:
-            val = st.radio(item, scale, index=None, key=f"reliance_{item[:30]}")
-            reliance_responses[item] = val
-
-        submitted = st.form_submit_button("Submit responses", type="primary")
-
-    if submitted:
-        all_r = {**agency_responses, **reliance_responses}
-        unanswered = [k for k, v in all_r.items() if v is None]
-        if unanswered:
-            st.error(
-                f"Please answer all questions before submitting ({len(unanswered)} remaining)."
-            )
-            return
-        state["questionnaire_responses"] = {
-            "agency": agency_responses,
-            "reliance": reliance_responses,
-        }
-        _log(
-            logger, state, "questionnaire_completed",
-            agency_responses=agency_responses,
-            reliance_responses=reliance_responses,
         )
         if not state.get("session_saved"):
             with st.spinner("Saving session data…"):
@@ -924,8 +921,6 @@ def run(condition_id: str) -> None:
         _screen_6_recommendation(state, condition, agent, agent_state, logger)
     elif stage == 7:
         _screen_7_decision(state, logger)
-    elif stage == 8:
-        _screen_8_questionnaire(state, condition, logger)
     elif stage == 9:
         _screen_9_complete(state)
 
