@@ -325,6 +325,7 @@ def _initial_state() -> dict:
         "user_focus": "",
         # HIC Stage 2: post-recommendation checkpoint (C=1)
         "hic2_option": "",
+        "hic2_count": 0,  # incremented each submission to reset selectbox widget
         "stage2_done": False,
         "reco_generated": False,
         # Judgement settledness (shown after recommendation and any Stage 2 challenge)
@@ -339,6 +340,8 @@ def _initial_state() -> dict:
         "agent_state": None,
         "ai_recommendation": "",
         "_challenge_text": "",
+        # Citation navigation
+        "highlight_section": None,
         # Final decision
         "decision": "",
         "hold_reasons": [],
@@ -435,30 +438,60 @@ def _screen_3_policy(
     _next_button(logger, state, "Continue to candidate CV →", 4, "next_to_cv")
 
 
-def _show_full_doc_view(
-    state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger, doc_key: str
+def _show_document_with_highlight(
+    state: dict,
+    agent: AgenticHiringDecisionAgent,
+    logger: EventLogger,
+    doc_key: str,
+    highlight_id: Optional[str] = None,
 ) -> None:
-    """Render a full knowledge-base document with a back button."""
-    titles = {
-        "role_description": "Role Description — Full Document",
-        "screening_policy": "Screening Policy — Full Document",
+    """Render a full document, optionally highlighting the cited section.
+
+    When `highlight_id` is set (citation-driven navigation), the matching section
+    is shown with a yellow background; all other sections are shown normally.
+    """
+    _DOC_TITLES = {
+        "role_description": "Role Description",
+        "screening_policy": "Screening Policy",
+        "candidate_cv": "Candidate CV",
     }
-    st.header(titles.get(doc_key, doc_key))
+    title = _DOC_TITLES.get(doc_key, doc_key.replace("_", " ").title())
+    st.header(title)
+    if highlight_id:
+        st.caption("The highlighted section is the one cited in the recommendation.")
+
     sections = agent.get_document_sections(doc_key)
-    for section in sections:
-        st.markdown(f"**{section.heading}**")
-        st.write(section.text)
+    if not sections and doc_key == "candidate_cv":
+        st.markdown(CV_MARKDOWN)
+    else:
+        for section in sections:
+            if section.evidence_id == highlight_id:
+                st.markdown(
+                    f'<div id="cited-section" style="background:#fff3cd;padding:1rem 1.25rem;'
+                    f'border-left:5px solid #f0ad4e;border-radius:4px;'
+                    f'line-height:1.7;margin:0.5rem 0 1rem">'
+                    f'<strong>{section.heading}</strong><br><br>'
+                    f'{section.text}'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(f"**{section.heading}**")
+                st.write(section.text)
+
     st.divider()
-    back_label = (
-        "← Back to candidate CV"
-        if state.get("doc_view_from") == "cv"
-        else "← Back to recommendation"
-    )
-    if st.button(back_label, key=f"back_from_{doc_key}"):
-        _log(logger, state, "full_document_closed",
-             document=doc_key, from_screen=state.get("doc_view_from"))
+    from_screen = state.get("doc_view_from", "recommendation")
+    back_label = "← Back to recommendation" if from_screen == "recommendation" else "← Back to candidate CV"
+    if st.button(back_label, key=f"back_doc_{doc_key}", type="primary"):
+        _log(
+            logger, state, "document_view_closed",
+            document=doc_key,
+            highlight_section=highlight_id,
+            from_screen=from_screen,
+        )
         state["doc_view"] = None
         state["doc_view_from"] = None
+        state["highlight_section"] = None
         st.rerun()
 
 
@@ -472,13 +505,10 @@ def _screen_4_cv(
     """Single screen: CV review + assessment preferences (C=1) + AI recommendation + Stage 2 + settledness."""
     # ── Handle doc sub-views ──────────────────────────────────────────────────
     doc_view = state.get("doc_view")
-    if doc_view and doc_view not in ("role_description", "screening_policy"):
-        section = agent.get_section(doc_view)
-        if section:
-            _show_section_view(state, section, logger)
-            return
-    if doc_view in ("role_description", "screening_policy"):
-        _show_full_doc_view(state, agent, logger, doc_view)
+    if doc_view:
+        _show_document_with_highlight(
+            state, agent, logger, doc_view, state.get("highlight_section")
+        )
         return
 
     # ── CV ────────────────────────────────────────────────────────────────────
@@ -612,7 +642,7 @@ def _screen_4_cv(
 
     with st.chat_message("assistant"):
         if condition.explainability and rendered.citation_chips:
-            _render_inline_citations(state, rendered.text, rendered.citation_chips, logger)
+            _render_conversational_with_citations(state, rendered.text, rendered.citation_chips, logger, condition)
         else:
             st.write(rendered.text)
 
@@ -638,7 +668,7 @@ def _screen_4_cv(
             options=HIC_STAGE2_OPTIONS,
             index=None,
             placeholder="Choose an area…",
-            key="hic2_selectbox",
+            key=f"hic2_selectbox_{state.get('hic2_count', 0)}",
             label_visibility="collapsed",
         )
 
@@ -665,6 +695,7 @@ def _screen_4_cv(
                 )
                 state["_challenge_text"] = challenge_resp.response_text
                 state["hic2_option"] = hic2_option
+                state["hic2_count"] = state.get("hic2_count", 0) + 1
                 _log(
                     logger, state, "hic_stage2_submitted",
                     hic_option=hic2_option,
@@ -713,85 +744,128 @@ def _screen_4_cv(
 
 
 
-def _colorize_section_refs(text: str, label_map: dict) -> str:
-    """Replace cited Section X.Y labels with clickable stCiteRef spans embedding the evidence_id."""
-    import re
+_DOC_ABBREV_CHIP = {
+    "role_description": "Role",
+    "screening_policy": "Policy",
+    "candidate_cv": "CV",
+}
+
+
+def _style_section_refs(text: str, label_map: dict) -> str:
+    """Visually highlight Section X.Y references inline (non-clickable styling only)."""
 
     def _sub(m: re.Match) -> str:
         label = m.group(0)
         if label in label_map:
-            section = label_map[label]
             return (
-                f'<span class="stCiteRef" data-eid="{section.evidence_id}" '
-                f'style="color:#2563eb;font-weight:600;text-decoration:underline;cursor:pointer">'
-                f'{label}</span>'
+                f'<span style="color:#1d4ed8;font-weight:600">{label}</span>'
             )
         return label
 
     return re.sub(r"Section\s+\d+\.\d+", _sub, text)
 
 
-def _render_inline_citations(
+def _chip_click(
+    state: dict,
+    logger: EventLogger,
+    chip: EvidenceSection,
+    condition: Condition,
+) -> None:
+    """Log a citation chip click and navigate to the cited document section."""
+    state["provenance_clicks"] += 1
+    _log(
+        logger, state, "citation_clicked",
+        participant_id=state.get("participant_id", ""),
+        condition_id=condition.condition_id,
+        citation_id=chip.evidence_id,
+        document_type=chip.document_key,
+        section_number=chip.section_label,
+        source_screen="recommendation",
+        provenance_click_count=state["provenance_clicks"],
+    )
+    state["doc_view"] = chip.document_key
+    state["highlight_section"] = chip.evidence_id
+    state["doc_view_from"] = "recommendation"
+    st.rerun()
+
+
+def _render_chip(
+    chip: EvidenceSection,
+    state: dict,
+    logger: EventLogger,
+    condition: Condition,
+    key_suffix: str = "",
+) -> None:
+    """Render a single clickable citation chip button."""
+    abbr = _DOC_ABBREV_CHIP.get(chip.document_key, chip.document_key[:4].title())
+    sec_match = re.search(r"\d+\.\d+", chip.section_label)
+    label = f"[{abbr} \u00a7{sec_match.group()}]" if sec_match else f"[{abbr}]"
+    if st.button(label, key=f"cite_{chip.evidence_id}{key_suffix}", help=chip.heading):
+        _chip_click(state, logger, chip, condition)
+
+
+def _render_conversational_with_citations(
     state: dict,
     text: str,
     chips: list[EvidenceSection],
     logger: EventLogger,
+    condition: Condition,
 ) -> None:
-    """Render recommendation text with clickable section refs; clicking navigates to the highlighted section."""
+    """Render recommendation text with citation chips immediately after each cited sentence.
+
+    Splits at sentence boundaries. After each sentence that references a document
+    section, the corresponding chips appear directly below it — never as a
+    detached evidence list at the bottom of the message.
+    """
     if not chips:
         st.write(text)
         return
 
     label_map = {s.section_label: s for s in chips}
-    colored = _colorize_section_refs(text, label_map)
-    st.markdown(colored, unsafe_allow_html=True)
+    rendered_ids: set[str] = set()
 
-    # Citation chip buttons — one per cited section, clearly labelled for navigation
-    _DOC_ABBREV = {
-        "role_description": "Role Description",
-        "screening_policy": "Screening Policy",
-        "candidate_cv": "CV",
-    }
-    st.write("")
-    cols = st.columns(min(len(chips), 3))
-    for i, section in enumerate(chips):
-        doc_abbr = _DOC_ABBREV.get(section.document_key, section.document_key.replace("_", " ").title())
-        btn_label = f"↗ {section.section_label} — {doc_abbr}"
-        with cols[i % len(cols)]:
-            if st.button(btn_label, key=f"cite_nav_{section.evidence_id}", use_container_width=True):
-                state["doc_view"] = section.evidence_id
-                state["doc_view_from"] = "recommendation"
-                state["provenance_clicks"] += 1
-                _log(
-                    logger, state, "citation_clicked",
-                    evidence_id=section.evidence_id,
-                    section_label=section.section_label,
-                    provenance_click_count=state["provenance_clicks"],
-                )
-                st.rerun()
+    # Split at sentence boundaries (. ! ? followed by space and capital letter)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text.strip())
 
+    pending: list[str] = []
 
-def _show_section_view(
-    state: dict, section: EvidenceSection, logger: EventLogger
-) -> None:
-    """Render a single cited evidence section with highlighted text and a back button."""
-    st.caption(f"{section.document_title} \u00b7 {section.section_label}")
-    st.markdown(
-        f'<div style="background:#fef9c3;padding:1rem 1.25rem;'
-        f'border-left:4px solid #f59e0b;border-radius:4px;'
-        f'line-height:1.7;font-size:1rem">'
-        f'<strong>{section.heading}</strong><br><br>'
-        f'{section.text}'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-    st.write("")
-    if st.button("\u2190 Back to CV and recommendation", key=f"back_from_section_{section.evidence_id}"):
-        _log(logger, state, "section_view_closed",
-             evidence_id=section.evidence_id, section=section.section_label)
-        state["doc_view"] = None
-        state["doc_view_from"] = None
-        st.rerun()
+    def _flush_pending() -> None:
+        if pending:
+            st.markdown(" ".join(pending))
+            pending.clear()
+
+    for sentence in sentences:
+        refs = list(dict.fromkeys(re.findall(r"Section\s+\d+\.\d+", sentence)))
+        sentence_chips = [
+            label_map[r]
+            for r in refs
+            if r in label_map and label_map[r].evidence_id not in rendered_ids
+        ]
+
+        if not sentence_chips:
+            pending.append(sentence)
+            continue
+
+        _flush_pending()
+
+        styled = _style_section_refs(sentence, label_map)
+        st.markdown(styled, unsafe_allow_html=True)
+
+        chip_cols = st.columns(len(sentence_chips))
+        for i, chip in enumerate(sentence_chips):
+            with chip_cols[i]:
+                _render_chip(chip, state, logger, condition)
+            rendered_ids.add(chip.evidence_id)
+
+    _flush_pending()
+
+    # Overflow: chips not matched to any sentence (edge case)
+    overflow = [c for c in chips if c.evidence_id not in rendered_ids]
+    if overflow:
+        ocols = st.columns(len(overflow))
+        for i, chip in enumerate(overflow):
+            with ocols[i]:
+                _render_chip(chip, state, logger, condition, key_suffix="_ov")
 
 
 

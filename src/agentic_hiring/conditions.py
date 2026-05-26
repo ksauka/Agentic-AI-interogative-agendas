@@ -120,7 +120,7 @@ def hic_stage2_prompt(condition: "Condition") -> str:
     if condition.anthropomorphic_cues:
         return (
             "Before making your final decision, would you like me to look more closely "
-            "at any aspect of the recommendation?"
+            "at any aspect of the candidate?"
         )
     return (
         "Before you proceed to your final decision, you can request a closer look "

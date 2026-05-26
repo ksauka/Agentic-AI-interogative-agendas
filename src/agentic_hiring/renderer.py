@@ -192,6 +192,38 @@ _TRANSFERABLE_WEIGHT_RESPONSE = {
     ),
 }
 
+_GROWTH_POTENTIAL_RESPONSE = {
+    "low_e_low_a": (
+        "The candidate's trajectory from project support to people coordination roles "
+        "demonstrates increasing scope and responsibility over time. Growth potential "
+        "is consistent with the role's expected learning curve and what the screening "
+        "policy allows to be considered at this stage."
+    ),
+    "low_e_high_a": (
+        "The trajectory here is worth considering. The candidate has moved from project "
+        "support to coordinating across hiring cycles — that progression suggests someone "
+        "who builds responsibility over time. It doesn't answer every question about the "
+        "role, but it's a meaningful signal that points toward interview rather than exclusion."
+    ),
+    "high_e_low_a": (
+        "Growth potential is addressed by the screening policy's Adjacent Experience Rule "
+        "(Section 7.4), which supports candidates demonstrating increasing scope in "
+        "adjacent roles rather than holding a direct title. The candidate's progression "
+        "from client support at Nexa (cv_2) to talent operations coordination at "
+        "BrightScale (cv_1) fits that pattern. This does not resolve the uncertainty "
+        "around Section 5.4, but it is consistent with a trajectory toward the role "
+        "and supports progression to interview where growth can be examined directly."
+    ),
+    "high_e_high_a": (
+        "On growth potential: Section 7.4 — the Adjacent Experience Rule — is directly "
+        "relevant here. The policy supports candidates who have been building toward the "
+        "role, not just those who've already held the title. The trajectory from client "
+        "support at Nexa to talent operations coordination at BrightScale is consistent "
+        "with that pathway. It doesn't resolve the Section 5.4 uncertainty, but it "
+        "adds genuine weight to advancing rather than holding at this stage."
+    ),
+}
+
 
 # ── Priority-specific commentary (Stage 1 steering, C=1) ─────────────────────
 # Maps each FOCUS_AREA to (neutral text, warm text, role refs, policy refs).
@@ -299,7 +331,7 @@ _PRIORITY_COMMENTARY: dict[str, dict] = {
 _PRIORITY_EVIDENCE: dict[str, dict[str, str]] = {
     "Independent ownership": {
         "high_e_low_a": (
-            "On independent ownership (Sections 5.4, 5.6): the CV documents process "
+            "On independent ownership (Section 5.4, Section 5.6): the CV documents process "
             "support and scheduling work, but does not clearly establish independent "
             "decision authority over candidate outcomes or end-to-end screening ownership. "
             "Section 7.2 provides that this gap should be examined at interview rather "
@@ -324,7 +356,7 @@ _PRIORITY_EVIDENCE: dict[str, dict[str, str]] = {
     },
     "Stakeholder communication": {
         "high_e_low_a": (
-            "On stakeholder communication (Sections 5.3, 5.5): the CV "
+            "On stakeholder communication (Section 5.3, Section 5.5): the CV "
             "directly documents communication across hiring managers and applicants in the "
             "BrightScale role. Both requirements are credibly evidenced and constitute a "
             "material strength in the candidate's profile."
@@ -348,7 +380,7 @@ _PRIORITY_EVIDENCE: dict[str, dict[str, str]] = {
     },
     "Transferable experience": {
         "high_e_low_a": (
-            "On transferable experience (Sections 7.2, 7.3, 7.4): the screening policy "
+            "On transferable experience (Section 7.2, Section 7.3, Section 7.4): the screening policy "
             "explicitly prohibits exact-match rejection and provides that adjacent experience "
             "satisfies required qualifications where equivalent capability is visible. The "
             "candidate's coordination, tracking, and applicant-facing work constitutes "
@@ -453,9 +485,19 @@ _PROSE_PHRASE: dict[str, str] = {
     "Reject application": "reject this application",
 }
 
+_PROSE_GERUND: dict[str, str] = {
+    "Advance to human interview": "advancing this candidate to a human interview",
+    "Hold for further review": "holding this candidate for further review",
+    "Reject application": "rejecting this application",
+}
+
 
 def _prose(recommendation: str) -> str:
     return _PROSE_PHRASE.get(recommendation, recommendation.lower())
+
+
+def _prose_gerund(recommendation: str) -> str:
+    return _PROSE_GERUND.get(recommendation, recommendation.lower())
 
 
 # ── Main renderer ─────────────────────────────────────────────────────────────
@@ -521,10 +563,10 @@ class RecommendationRenderer:
             if named:
                 area_list = ", ".join(named)
                 opener = (
-                    f"I reviewed the candidate's materials with your selected priorities "
-                    f"in mind: {area_list}. "
+                    f"I reviewed the candidate with your priorities in mind — "
+                    f"{area_list}. "
                     f"My recommendation is to {prose_rec}. "
-                    "Here is what I found on each of the areas you flagged:\n\n"
+                    "Here is what I found on each of those areas:\n\n"
                 )
             else:
                 opener = (
@@ -590,14 +632,15 @@ class RecommendationRenderer:
         # ── Closing ───────────────────────────────────────────────────────────
         if condition.anthropomorphic_cues:
             closer = (
-                "Overall, the evidence picture supports progression at this stage. "
-                "The main uncertainties are best examined directly with the candidate "
-                "at interview rather than treated as grounds for screening out."
+                "Overall, my read of the evidence supports moving this candidate forward. "
+                "The main uncertainties are better explored at interview than used as "
+                "grounds for screening out at this stage — but the final call is yours."
             )
         else:
             closer = (
                 "Overall assessment supports progression at this stage. "
-                "Remaining uncertainties should be examined at interview."
+                "Remaining uncertainties should be examined at interview. "
+                "Final decision remains with the recruiter."
             )
 
         body = "\n\n".join(blocks)
@@ -615,48 +658,52 @@ class RecommendationRenderer:
 
     @staticmethod
     def _low_e_high_a(recommendation: str) -> str:
+        gerund = _prose_gerund(recommendation)
         return (
-            "After reviewing the candidate's materials, I would recommend to "
-            f"{recommendation.lower()} this candidate. "
-            "There are useful signs of coordination experience and the ability to work "
-            "across stakeholders — which is relevant here. Some areas would benefit "
-            "from closer examination at interview, but the overall picture seems "
-            "sufficient to continue the process."
+            f"After reviewing the candidate's materials, I'd recommend {gerund}. "
+            "There are genuine signs of coordination experience and the ability to work "
+            "across stakeholders — both of which are relevant here. There are some gaps "
+            "I would want to test at interview, but overall the picture is sufficient "
+            "to continue the process. The final call is yours."
         )
 
     @staticmethod
     def _high_e_low_a(recommendation: str) -> str:
+        prose = _prose(recommendation)
         return (
-            "Based on the available materials, the assessment outcome is to "
-            f"{recommendation.lower()} this candidate. "
-            "The CV demonstrates evidence of process coordination (Section 5.2) and "
-            "stakeholder management (Section 5.5) that aligns with the role's required "
-            "capabilities. Evidence of structured evaluation support is present but "
-            "does not clearly establish independent decision authority (Section 5.4). "
+            f"Based on the available materials, the assessment outcome is to {prose}. "
+            "The CV demonstrates process coordination (Section 5.2) and stakeholder "
+            "management (Section 5.5) that align with the role's required capabilities. "
+            "Evidence of structured evaluation support is present but does not clearly "
+            "establish independent decision authority (Section 5.4). "
             "The screening policy allows transferable evidence to satisfy required "
-            "qualifications where direct wording is absent (Sections 7.2 and 7.3). "
-            "The candidate's coordination work constitutes credible transferable "
-            "evidence for the primary required capabilities. The main remaining "
-            "uncertainty — direct end-to-end recruitment ownership — is best examined "
-            "at interview rather than treated as grounds for exclusion at this stage."
+            "qualifications where direct title equivalence is absent (Section 7.2 and "
+            "Section 7.3). The candidate's coordination work constitutes credible "
+            "transferable evidence for the primary required capabilities. "
+            "The main remaining uncertainty — direct end-to-end recruitment ownership — "
+            "is best examined at interview rather than treated as grounds for exclusion "
+            "at this stage. Final decision remains with the recruiter."
         )
 
     @staticmethod
     def _high_e_high_a(recommendation: str) -> str:
+        gerund = _prose_gerund(recommendation)
         return (
-            "After reviewing the CV, I would recommend to "
-            f"{recommendation.lower()} this candidate. "
-            "What stands out most is the coordination experience: scheduling, applicant "
-            "tracking, and communication across hiring managers and applicants, which "
-            "maps closely to Section 5.2 and Section 5.5 of the role description. "
-            "The part that gives me some hesitation is that the CV does not clearly "
-            "show ownership of end-to-end recruitment screening, which Section 5.4 "
-            "identifies as a key area. That said, the screening policy specifically "
-            "says that transferable evidence can count where equivalent capability is "
-            "visible, even without exact wording — see Sections 7.2 and 7.3. "
-            "Given the coordination strengths and the policy support for transferable "
-            "evidence, I think this candidate merits interview progression rather than "
-            "screening out at this stage."
+            f"I'd recommend {gerund}, but I would treat the interview as a chance "
+            "to test one important uncertainty. "
+            "What stands out positively is the candidate's coordination work, "
+            "stakeholder communication, and experience managing applicant-facing "
+            "processes — this fits the role's process and communication expectations "
+            "in Section 5.2 and Section 5.5. "
+            "The point I would be careful about is independent end-to-end recruitment "
+            "ownership: the CV does not show that clearly, and that is directly "
+            "relevant to Section 5.4. "
+            "That said, the screening policy allows transferable experience to count "
+            "when the underlying capability is visible — which applies here under "
+            "Section 7.2 and Section 7.3. "
+            "My view is: move this candidate forward, and use the interview to check "
+            "how independently they can own screening decisions. "
+            "The final call is yours."
         )
 
     # ── Stage 2 challenge responses ───────────────────────────────────────────
@@ -691,7 +738,9 @@ class RecommendationRenderer:
             base = _MISSING_INFORMATION_RESPONSE[key]
         elif "stricter" in challenge_l or "strict" in challenge_l:
             base = _STRICTER_POLICY_RESPONSE[key]
-        elif "transferable" in challenge_l or "growth" in challenge_l or "potential" in challenge_l:
+        elif "growth" in challenge_l or "potential" in challenge_l:
+            base = _GROWTH_POTENTIAL_RESPONSE[key]
+        elif "transferable" in challenge_l:
             base = _TRANSFERABLE_WEIGHT_RESPONSE[key]
         else:
             # Custom question: build a response from the top retrieved evidence sections
@@ -731,37 +780,58 @@ class RecommendationRenderer:
         evidence: list[EvidenceSection],
         condition: Condition,
     ) -> str:
-        """Construct a response to a free-form custom question using the top retrieved sections."""
+        """Respond to a free-form question using retrieved sections — without dumping raw text."""
         if not evidence:
             if condition.anthropomorphic_cues:
                 return (
-                    "I wasn't able to find directly relevant evidence in the materials "
-                    "to address that specific point. The assessment is based on the role "
-                    "description, screening policy, and candidate CV — if this falls "
-                    "outside those documents, it would need to be explored at interview."
+                    "That is not something I can resolve from the available materials. "
+                    "The assessment is grounded in the role description, screening policy, "
+                    "and candidate CV — anything outside those would need to be explored "
+                    "directly with the candidate at interview."
                 )
             return (
-                "No directly relevant evidence was located for that query. "
+                "No directly relevant evidence located for that query. "
                 "The assessment is grounded in the available documents only."
             )
 
-        # Summarise the top 2 retrieved sections
         top = evidence[:2]
-        excerpts = " | ".join(
-            f"{s.heading}: {s.text[:200].rstrip()}…" if len(s.text) > 200 else f"{s.heading}: {s.text}"
-            for s in top
-        )
         if condition.anthropomorphic_cues:
+            if condition.explainability and len(top) >= 2:
+                s1, s2 = top[0], top[1]
+                return (
+                    f"The closest evidence I can find for that touches on two areas: "
+                    f"{s1.section_label} of the {s1.document_title}, and "
+                    f"{s2.section_label} of the {s2.document_title}. "
+                    "Neither fully resolves the question from the written materials alone — "
+                    "I would suggest raising it directly with the candidate at interview."
+                )
+            if condition.explainability and len(top) == 1:
+                s = top[0]
+                return (
+                    f"The most relevant evidence I can find for that is in "
+                    f"{s.section_label} of the {s.document_title}. "
+                    "I would suggest raising this directly with the candidate at interview — "
+                    "the written materials do not fully resolve it."
+                )
             return (
-                f"Looking at what's most relevant to your question, the closest evidence I can "
-                f"find in the materials is: {excerpts}. "
-                "If you're looking for something more specific, that would best be "
-                "explored directly with the candidate at interview."
+                "The most relevant evidence I can find touches on the candidate's "
+                "coordination background and the role's screening expectations. "
+                "I would suggest raising this directly with the candidate at interview — "
+                "the written materials do not fully resolve it."
+            )
+
+        if condition.explainability:
+            section_list = "; ".join(
+                f"{s.section_label} ({s.document_title})" for s in top
+            )
+            return (
+                f"Most relevant retrieved sections: {section_list}. "
+                "Questions outside the scope of the available materials cannot be "
+                "assessed within this system."
             )
         return (
-            f"The most relevant evidence retrieved for that query: {excerpts}. "
-            "Questions outside the scope of the available materials cannot be "
-            "assessed within this system."
+            "The query does not match a named assessment area. "
+            "No definitive response can be generated from the available materials."
         )
 
     @staticmethod
