@@ -10,11 +10,13 @@ def apply_anthrokit_theme(st) -> None:
             background: #ffffff;
             color: #262730;
         }
-        /* Anthrokit reading-column width — 860 px matches anthrokit/anthrokit/stylizer.py */
+        /* Anthrokit reading-column width  -  860 px matches anthrokit/anthrokit/stylizer.py */
         .block-container {
-            max-width: 860px;
-            padding-top: 2.2rem;
+            max-width: 1100px;
+            padding-top: 2rem;
             padding-bottom: 3rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
         }
         .study-banner {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -96,10 +98,17 @@ def apply_anthrokit_theme(st) -> None:
             margin-bottom: 1rem;
             color: #495057;
         }
-        /* Chat message body — comfortable reading line height */
+        /* Chat bubbles fill full column width */
         [data-testid="stChatMessage"] p {
             line-height: 1.75;
         }
+        div[data-testid="stChatMessageContent"] {
+            max-width: 100% !important;
+        }
+        /* Hide Streamlit branding */
+        .viewerBadge_container__r5tak { display: none !important; }
+        footer { visibility: hidden; }
+        #MainMenu { visibility: hidden; }
         /* Completion card */
         .completion-card {
             background: #f0fdf4;
@@ -116,9 +125,39 @@ def apply_anthrokit_theme(st) -> None:
             color: #15803d;
             margin: 0;
         }
-        /* Divider between document sections */
-        .doc-section + .doc-section {
-            margin-top: 0.5rem;
+        /* Section header dividers */
+        h2 {
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 0.4rem;
+            margin-bottom: 1.2rem;
+        }
+        /* Consistent table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 2px solid #dee2e6;
+        }
+        td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: top;
+        }
+        /* Citation chip buttons - compact inline style */
+        [data-testid="stButton"] button:not([kind="primary"]) {
+            font-size: 0.78rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            border: 1px solid #c7d2fe;
+            background: #eef2ff;
+            color: #3730a3;
+            font-weight: 600;
         }
         </style>
         """,
@@ -140,8 +179,8 @@ def show_study_banner(st) -> None:
 
 
 def show_study_progress(st, stage: int) -> None:
-    """Show a compact step progress bar — hidden on Welcome (0) and Complete (9) screens."""
-    # Map stage numbers to (step_index, label) — only stages that render real screens
+    """Show a compact step progress bar  -  hidden on Welcome (0) and Complete (9) screens."""
+    # Map stage numbers to (step_index, label)  -  only stages that render real screens
     _STEPS = [
         (2, "Role description"),
         (3, "Screening policy"),
@@ -153,8 +192,8 @@ def show_study_progress(st, stage: int) -> None:
         if stage >= s:
             active = i
     if active is None:
-        return  # Stage 0 (welcome) or unrecognised — no progress bar
+        return  # Stage 0 (welcome) or unrecognised  -  no progress bar
     total = len(_STEPS)
     step_num = active + 1
     label = _STEPS[active][1]
-    st.progress(step_num / total, text=f"Step {step_num} of {total} \u2014 {label}")
+    st.progress(step_num / total, text=f"Step {step_num} of {total}: {label}")

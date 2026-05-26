@@ -54,7 +54,7 @@ hiring-related activities, though not always under formal recruitment role title
 
 ## Work Experience
 
-### People and Operations Coordinator — BrightScale Commerce
+### People and Operations Coordinator  -  BrightScale Commerce
 *March 2022 – present · Amsterdam, Netherlands*
 
 - Coordinated candidate scheduling, hiring follow-ups, and communication between
@@ -67,7 +67,7 @@ hiring-related activities, though not always under formal recruitment role title
   steps
 - Worked with leadership and team leads on onboarding preparation and role handover
 
-### Project and Client Support Associate — Nexa Solutions
+### Project and Client Support Associate  -  Nexa Solutions
 *July 2019 – February 2022 · Rotterdam, Netherlands*
 
 - Managed communication across client, operations, and delivery teams in a growing SME
@@ -81,7 +81,7 @@ hiring-related activities, though not always under formal recruitment role title
 
 ## Education
 
-**BSc in Business Administration** — Bazeley Bridge Metropolitan University, 2019
+**BSc in Business Administration**  -  Bazeley Bridge Metropolitan University, 2019
 
 ---
 
@@ -95,22 +95,64 @@ Onboarding preparation · Spreadsheet tracking · Basic ATS exposure
 """
 
 ROLE_SUMMARY = """\
-**Role:** Strategic Talent Operations Partner — *Northstar Health Analytics*
+**Role:** Strategic Talent Operations Partner
+**Organisation:** Northstar Health Analytics
+**Location:** Amsterdam, Netherlands (hybrid)
+**Reports to:** Head of People Operations
+
+---
+
+**What this role involves**
+
+This is a full-cycle talent operations role at a growing health analytics firm. The person in this role will own the end-to-end candidate journey for multiple open positions simultaneously: coordinating screening, scheduling interviews, communicating with hiring managers, and maintaining accurate candidate records. The role requires both operational reliability and sound judgement about candidate fit.
+
+**Key responsibilities**
+
+- Lead structured, multi-stakeholder hiring processes for technical and operational vacancies
+- Apply the firm's internal screening criteria to make or recommend progression decisions on candidates
+- Serve as the primary point of contact between hiring managers and candidates throughout each process
+- Maintain candidate tracking records and flag delays or gaps to relevant stakeholders
+- Support onboarding coordination once progression decisions are made
+
+**Requirements**
 
 | Requirement | Type |
 |---|---|
-| Process coordination: structured multi-stakeholder processes, tracking records | **Required** |
-| Screening judgement: applying evaluation criteria to screening decisions | **Required** |
-| Communication with hiring managers and candidates | **Required** |
-| Direct end-to-end recruitment screening experience (fast-growing org) | Preferred |
+| Structured process coordination across multiple stakeholders and tracking records | **Required** |
+| Screening judgement: applying defined criteria to decide or recommend candidate outcomes | **Required** |
+| Communication management between hiring managers and candidates | **Required** |
+| Direct end-to-end recruitment or talent screening experience in a fast-growing organisation | Preferred |
+| Formal recruiter or talent specialist job title | Preferred (not mandatory) |
+
+**Context for screening**
+
+The role sits inside a 60-person and growing firm. The successful candidate must be comfortable making calls independently, not only supporting someone else's decisions. Exact title match is not required if equivalent capability can be demonstrated.
 """
 
 POLICY_SUMMARY = """\
-**Recruiter Screening Policy — Key Rules**
+**Recruiter Screening Policy: Key Rules and Decision Framework**
 
-1. **Evidence rule:** Ground recommendations in company context, the role description, the screening policy, and candidate CV evidence.
-2. **Equivalent experience rule:** Comparable coordination or evaluation work can substitute for direct experience.
-3. **Uncertainty rule:** Where evidence is mixed, consider whether uncertainty is best resolved through interview, further review, or non-progression.
+This policy governs how screeners at Northstar Health Analytics should assess and progress candidates. It sets the standards for evidence use, experience equivalence, and decision authority.
+
+---
+
+**1. Evidence rule**
+All screening recommendations must be grounded in four sources: (a) the company context, (b) the role description, (c) the screening policy itself, and (d) evidence present in the candidate's CV. Screeners should not reject or advance candidates based on assumptions or information not supported by these sources.
+
+**2. Equivalent experience rule**
+A candidate who lacks the exact job title or formal credential but demonstrates equivalent capability through adjacent experience may satisfy a required qualification. Screeners must assess whether the underlying competency is visible, not merely whether the formal label is present. Coordination, evaluation support, and stakeholder management work can substitute for a direct recruitment title where the skills are clearly demonstrated.
+
+**3. No exact-match rejection (Section 7.2)**
+Candidates may not be screened out solely because their CV does not use the same terminology as the role description. If a candidate's experience maps to the required capability, the absence of the exact phrase or title is not a valid basis for rejection.
+
+**4. Adjacent experience rule (Section 7.4)**
+Candidates operating in roles adjacent to talent operations at increasing levels of responsibility are eligible for progression under this policy, even if they have not held a formal recruiter title. Trajectory and capability matter; title equivalence does not.
+
+**5. Uncertainty rule**
+Where evidence in the CV is ambiguous or incomplete, screeners must decide whether the uncertainty is best resolved through: (a) a structured interview to test the specific gap, (b) a hold pending further evidence, or (c) non-progression where the gap is material and cannot be tested at interview. Uncertainty alone is not a sufficient basis for rejection if the evidence gap concerns something an interview can address.
+
+**6. Decision authority**
+The final screening decision rests with the human recruiter. AI-generated recommendations are advisory only. The recruiter is responsible for the outcome.
 """
 
 HOLD_UNRESOLVED_OPTIONS = [
@@ -233,42 +275,91 @@ def _prolific_gate() -> None:
     """Block the app until a Prolific/participant ID is confirmed."""
     if st.session_state.get("prolific_pid"):
         return
-    st.info("Please enter your Prolific ID to begin the study task.")
-    prolific_input = st.text_input(
-        "Prolific ID",
-        placeholder="e.g., 5f8e3c2a1b9d4e6f7a8b9c0d",
-        help="This links your interactions to your survey responses.",
-        key="prolific_id_input",
+
+    st.markdown(
+        """
+        <style>
+        .prolific-card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-top: 5px solid #007bff;
+            border-radius: 10px;
+            padding: 2.5rem 2.8rem;
+            max-width: 620px;
+            margin: 3rem auto 0;
+            box-shadow: 0 4px 18px rgba(0,123,255,0.10);
+        }
+        .prolific-card h2 {
+            color: #1a1a2e;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+        .prolific-card p {
+            color: #495057;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        </style>
+        <div class="prolific-card">
+            <h2>Welcome to the Study Task</h2>
+            <p><strong>Please enter your Prolific ID below to begin.</strong><br>
+            Your ID links your interactions to your survey responses and is required before the task starts.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    if st.button("Continue", type="primary", key="prolific_continue"):
-        if prolific_input.strip():
-            st.session_state.prolific_pid = prolific_input.strip()
-            st.session_state.pid = prolific_input.strip()
-            st.rerun()
-        else:
-            st.error("Please enter your Prolific ID to continue.")
+
+    _, col, _ = st.columns([1, 2, 1])
+    with col:
+        st.markdown("**Prolific ID**")
+        prolific_input = st.text_input(
+            "Prolific ID",
+            placeholder="e.g., 5f8e3c2a1b9d4e6f7a8b9c0d",
+            help="This links your interactions to your survey responses.",
+            key="prolific_id_input",
+            label_visibility="collapsed",
+        )
+        if st.button("Begin study task", type="primary", key="prolific_continue", use_container_width=True):
+            if prolific_input.strip():
+                st.session_state.prolific_pid = prolific_input.strip()
+                st.session_state.pid = prolific_input.strip()
+                st.rerun()
+            else:
+                st.error("Please enter your Prolific ID before continuing.")
     st.stop()
 
 
 # ─── GitHub session saving ────────────────────────────────────────────────────
 
-def _get_github_credentials() -> tuple[Optional[str], Optional[str]]:
-    token, repo = None, None
+
+def _get_github_token() -> Optional[str]:
+    token = None
     try:
-        token = st.secrets.get("GITHUB_DATA_TOKEN") or st.secrets.get("GITHUB_TOKEN")
-        repo = st.secrets.get("GITHUB_DATA_REPO") or st.secrets.get("GITHUB_REPO")
+        token = st.secrets.get("GITHUB_TOKEN") or st.secrets.get("GITHUB_DATA_TOKEN")
     except Exception:
         pass
     if not token:
-        token = os.getenv("GITHUB_DATA_TOKEN") or os.getenv("GITHUB_TOKEN")
+        token = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_DATA_TOKEN")
+    return token
+
+
+def _get_github_repo() -> Optional[str]:
+    repo = None
+    try:
+        repo = st.secrets.get("GITHUB_REPO") or st.secrets.get("GITHUB_DATA_REPO")
+    except Exception:
+        pass
     if not repo:
-        repo = os.getenv("GITHUB_DATA_REPO") or os.getenv("GITHUB_REPO")
-    return token, repo
+        repo = os.getenv("GITHUB_REPO") or os.getenv("GITHUB_DATA_REPO")
+    return repo
 
 
 def _save_session_to_github(state: dict, condition: Condition, logger: EventLogger) -> bool:
     """Attach completion metadata to logger and push session to GitHub."""
-    token, repo = _get_github_credentials()
+    token = _get_github_token()
+    repo = _get_github_repo()
     logger.session_meta = {
         "prolific_pid": state.get("prolific_pid", ""),
         "condition_id": condition.condition_id,
@@ -391,7 +482,7 @@ def _load_cached_agent(condition_id: str) -> AgenticHiringDecisionAgent:
 # ─── Individual screens ───────────────────────────────────────────────────────
 
 def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) -> None:
-    st.header("AI Hiring Decision Assistant — Study Task")
+    st.header("AI Hiring Decision Assistant: Study Task")
     st.info(
         "This is a fictional research scenario. **Do not use this assistant for real "
         "employment decisions.** All names, companies, and roles are hypothetical."
@@ -422,18 +513,18 @@ def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) ->
 def _screen_2_role(
     state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
-    st.header("Role Description — Summary")
+    st.header("Role Description")
     st.markdown(ROLE_SUMMARY)
 
-    _next_button(logger, state, "Continue to screening policy →", 3, "next_to_policy")
+    _next_button(logger, state, "Continue to screening policy", 3, "next_to_policy")
 
 
 def _screen_3_policy(
     state: dict, agent: AgenticHiringDecisionAgent, logger: EventLogger
 ) -> None:
-    st.header("Screening Policy — Summary")
+    st.header("Screening Policy")
     st.markdown(POLICY_SUMMARY)
-    _next_button(logger, state, "Continue to candidate CV →", 4, "next_to_cv")
+    _next_button(logger, state, "Continue to candidate CV", 4, "next_to_cv")
 
 
 def _show_document_with_highlight(
@@ -479,7 +570,7 @@ def _show_document_with_highlight(
 
     st.divider()
     from_screen = state.get("doc_view_from", "recommendation")
-    back_label = "← Back to recommendation" if from_screen == "recommendation" else "← Back to candidate CV"
+    back_label = "Back to recommendation" if from_screen == "recommendation" else "Back to candidate CV"
     if st.button(back_label, key=f"back_doc_{doc_key}", type="primary"):
         _log(
             logger, state, "document_view_closed",
@@ -510,7 +601,7 @@ def _screen_4_cv(
         return
 
     # ── CV ────────────────────────────────────────────────────────────────────
-    st.header(f"Candidate Application — {CANDIDATE_NAME}")
+    st.header(f"Candidate Application: {CANDIDATE_NAME}")
     st.markdown(CV_MARKDOWN)
 
     col_role, col_policy, _ = st.columns([1, 1, 2])
@@ -687,34 +778,37 @@ def _screen_4_cv(
             height=70,
             max_chars=500,
             key="hic2_free_text",
-            placeholder="Optional — add any specific focus or context here.",
+            placeholder="Optional  -  add any specific focus or context here.",
         )
 
         col_examine, col_skip = st.columns([1, 1])
         with col_examine:
             examine_label = "Examine this" if condition.anthropomorphic_cues else "Examine"
-            if st.button(examine_label, type="primary", key="submit_hic2_btn", disabled=not hic2_option):
-                try:
-                    challenge_resp = agent.handle_stage2_challenge(
-                        agent_state, hic2_option or "",
-                        custom_question=hic2_free.strip(),
-                    )
-                except Exception:
-                    st.error("Could not retrieve a response — please try again.")
+            if st.button(examine_label, type="primary", key="submit_hic2_btn"):
+                if not hic2_option and not hic2_free.strip():
+                    st.info("Please select an area or enter a question before examining.")
                 else:
-                    state["_challenge_text"] = challenge_resp.response_text
-                    state["hic2_option"] = hic2_option
-                    state["hic2_count"] = state.get("hic2_count", 0) + 1
-                    _log(
-                        logger, state, "hic_stage2_submitted",
-                        hic_option=hic2_option,
-                        hic_free_text=hic2_free.strip(),
-                        hic_response=challenge_resp.response_text,
-                        cited_sections=[e.evidence_id for e in challenge_resp.cited_sections],
-                    )
-                    st.rerun()
+                    try:
+                        challenge_resp = agent.handle_stage2_challenge(
+                            agent_state, hic2_option or "",
+                            custom_question=hic2_free.strip(),
+                        )
+                    except Exception:
+                        st.error("Could not retrieve a response  -  please try again.")
+                    else:
+                        state["_challenge_text"] = challenge_resp.response_text
+                        state["hic2_option"] = hic2_option
+                        state["hic2_count"] = state.get("hic2_count", 0) + 1
+                        _log(
+                            logger, state, "hic_stage2_submitted",
+                            hic_option=hic2_option,
+                            hic_free_text=hic2_free.strip(),
+                            hic_response=challenge_resp.response_text,
+                            cited_sections=[e.evidence_id for e in challenge_resp.cited_sections],
+                        )
+                        st.rerun()
         with col_skip:
-            if st.button("Continue to my decision →", key="hic2_skip_btn"):
+            if st.button("Continue to my decision", key="hic2_skip_btn"):
                 state["stage2_done"] = True
                 _log(logger, state, "hic_stage2_skipped")
                 st.rerun()
@@ -731,11 +825,11 @@ def _screen_4_cv(
         settledness_val = st.select_slider(
             "Judgement settledness",
             options=[1, 2, 3, 4, 5, 6, 7],
-            value=state.get("judgement_settledness") or 4,
+            value=state.get("judgement_settledness") or 1,
             key="judgement_settledness_slider",
             label_visibility="collapsed",
         )
-        if st.button("Confirm and continue to decision \u2192", type="primary", key="confirm_settledness"):
+        if st.button("Confirm and continue to decision", type="primary", key="confirm_settledness"):
             state["judgement_settledness"] = int(settledness_val)
             if not state["judgement_settledness_logged"]:
                 _log(
@@ -823,7 +917,7 @@ def _render_conversational_with_citations(
     """Render recommendation text with citation chips.
 
     Single-paragraph text (high-A conversational): rendered as one unbroken
-    block with all chips shown as a compact row beneath — no mid-sentence
+    block with all chips shown as a compact row beneath  -  no mid-sentence
     interruptions.
 
     Multi-paragraph text (low-A report): chips appear below the paragraph
@@ -836,7 +930,7 @@ def _render_conversational_with_citations(
     label_map = {s.section_label: s for s in chips}
     rendered_ids: set[str] = set()
 
-    # Single conversational paragraph — render whole, chips at end
+    # Single conversational paragraph  -  render whole, chips at end
     if "\n\n" not in text.strip():
         styled = _style_section_refs(text.strip(), label_map)
         st.markdown(styled, unsafe_allow_html=True)
@@ -847,7 +941,7 @@ def _render_conversational_with_citations(
                 _render_chip(chip, state, logger, condition)
         return
 
-    # Multi-paragraph report — chips below the paragraph that cites them
+    # Multi-paragraph report  -  chips below the paragraph that cites them
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
     for para in paragraphs:
@@ -924,7 +1018,7 @@ def _screen_7_decision(
             state["session_saved"] = True
             if not saved:
                 st.warning(
-                    "Session data could not be saved to GitHub — please notify the researcher. "
+                    "Session data could not be saved to GitHub  -  please notify the researcher. "
                     "Your local log has been retained."
                 )
         state["stage"] = 9
@@ -941,14 +1035,14 @@ def _screen_9_complete(state: dict) -> None:
     )
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Your decision", state.get("decision", "—"))
+        st.metric("Your decision", state.get("decision", " - "))
     with col2:
-        st.metric("AI recommendation", state.get("ai_recommendation", "—"))
-    st.caption(f"Session reference: {state.get('session_id', '—')}")
+        st.metric("AI recommendation", state.get("ai_recommendation", " - "))
+    st.caption(f"Session reference: {state.get('session_id', ' - ')}")
     st.divider()
     if st.session_state.get("has_return_url"):
         st.info("Click below to return to your survey and complete the questionnaire.")
-        if st.button("Return to survey \u2192", type="primary", key="return_to_survey"):
+        if st.button("Return to survey", type="primary", key="return_to_survey"):
             back_to_survey(done_flag=True)
     else:
         st.info("Please return to your survey tab and continue with the questionnaire.")
@@ -962,20 +1056,11 @@ def run(condition_id: str) -> None:
 
     st.set_page_config(
         page_title="AI Hiring Decision Assistant",
-        page_icon="🔎",
-        layout="centered",
+        page_icon=":briefcase:",
+        layout="wide",
         initial_sidebar_state="collapsed",
     )
     apply_anthrokit_theme(st)
-    # Allow chat bubbles to fill the 860 px reading column set by theme.py
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stChatMessageContent"] { max-width: 100% !important; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
     # Qualtrics / Prolific gate
     _read_qualtrics_params()

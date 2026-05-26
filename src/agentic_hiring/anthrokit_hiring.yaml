@@ -1,0 +1,107 @@
+# AnthroKit-Hiring v1.0
+# Anthropomorphism token schema for AI-mediated candidate screening study.
+#
+# Adapted from AnthroKit v1.0 (anthrokit/anthrokit/anthrokit.yaml).
+# Persona-irrelevant tokens are suppressed — persona_name, emoji, humor are
+# inappropriate for a professional hiring context and were excluded by design.
+#
+# Operative dimensions: self_reference, warmth, formality, empathy, hedging.
+# These five tokens define the A=0 (LowA) / A=1 (HighA) contrast.
+#
+# Texts for both conditions are pre-authored (static) in anthrokit_prompts.py
+# to ensure fully deterministic, reproducible outputs across experimental
+# conditions. anthrokit_stylizer.py provides the preset loader and a
+# rule-based fallback for ad-hoc text outside of the named pattern cards.
+
+version: "1.0-hiring"
+domain: "candidate-screening"
+
+tokens:
+  self_reference:
+    type: enum
+    values: ["none", "I"]
+    operative: true
+    usage:
+      none: "Recommendation: Advance to interview."
+      I:    "I'd recommend advancing this candidate to interview."
+    guardrails:
+      - "Never imply embodiment or physical presence"
+      - "Never claim feelings or lived experiences"
+
+  warmth:
+    type: float
+    range: [0, 1]
+    operative: true
+    examples_low:  ["Caution: end-to-end recruitment ownership not demonstrated."]
+    examples_high: ["The thing that gives me the most pause is..."]
+
+  formality:
+    type: float
+    range: [0, 1]
+    operative: true
+    examples_low:  ["What I found most convincing is the coordination work."]
+    examples_high: ["Supporting evidence: process coordination (Section 5.2)."]
+
+  empathy:
+    type: float
+    range: [0, 1]
+    operative: true
+    examples_low:  ["Evidence gap identified."]
+    examples_high: ["I want to be direct about where the CV is less clear."]
+
+  hedging:
+    type: float
+    range: [0, 1]
+    operative: true
+    examples_low:  ["Independent screening decision authority not established."]
+    examples_high: ["Where I'm less confident is independent end-to-end recruitment ownership."]
+
+  disclosure:
+    type: enum
+    values: ["explicit"]
+    operative: false
+    notes: "All conditions use explicit AI identity framing (implicit in study design)."
+
+# Tokens suppressed for this domain (not operative in professional hiring):
+suppressed:
+  - persona_name    # No AI persona — keeps the agent clearly institutional
+  - emoji           # Inappropriate for professional hiring context
+  - humor           # Inappropriate for professional hiring context
+  - greeting_style  # Study has no greeting phase
+
+presets:
+  LowA:
+    self_reference: "none"
+    warmth: 0.25
+    formality: 0.70
+    empathy: 0.15
+    hedging: 0.35
+    disclosure: "explicit"
+    # Characteristic surface forms:
+    #   "Recommendation: Advance to interview."
+    #   "Caution: end-to-end recruitment ownership not demonstrated."
+    #   "Final decision authority rests with the recruiter."
+
+  HighA:
+    self_reference: "I"
+    warmth: 0.70
+    formality: 0.55
+    empathy: 0.55
+    hedging: 0.45
+    disclosure: "explicit"
+    # Characteristic surface forms:
+    #   "I'd recommend moving this candidate forward."
+    #   "The thing that gives me the most pause is..."
+    #   "My view: move them forward. The final call is yours."
+
+policy:
+  no_human_experience_claims: true
+  no_sensitive_attribute_inference: true
+  preserve_factual_content: true
+  decision_authority_to_human: true
+  guardrails:
+    - "Never claim feelings, emotions, or lived experiences"
+    - "Never imply embodiment or physical presence"
+    - "Never infer candidate protected characteristics"
+    - "Preserve all factual evidence content exactly"
+    - "Always return final decision authority to the recruiter"

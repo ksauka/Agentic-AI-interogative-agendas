@@ -126,6 +126,21 @@ For local execution, the app reads only `OPENAI_API_KEY` and
 Store `OPENAI_API_KEY` as a deployment secret for a shared Streamlit app; do
 not commit it to this repository. A non-secret template is in `.env.example`.
 
+For Streamlit deployment, set these in app secrets (Streamlit Cloud `Secrets`)
+or local `.streamlit/secrets.toml`:
+
+```toml
+OPENAI_API_KEY = "sk-..."
+AGENTIC_REQUIRE_LIVE_RAG = "true"
+
+# Private session-log repo (optional but recommended)
+GITHUB_TOKEN = "ghp_..."
+GITHUB_REPO = "owner/hiring-study-data-private"
+```
+
+`GITHUB_TOKEN` and `GITHUB_REPO` are required if you want logs
+written to a private GitHub data repository from deployed Streamlit sessions.
+
 Launch one assigned condition, for example:
 
 ```bash

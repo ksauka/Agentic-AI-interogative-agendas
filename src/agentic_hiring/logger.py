@@ -79,8 +79,8 @@ class EventLogger:
         """
         from .github_saver import save_to_github
 
-        _token = github_token or os.getenv("GITHUB_DATA_TOKEN") or os.getenv("GITHUB_TOKEN")
-        _repo = repo or os.getenv("GITHUB_DATA_REPO") or os.getenv("GITHUB_REPO")
+        _token = github_token or os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_DATA_TOKEN")
+        _repo = repo or os.getenv("GITHUB_REPO") or os.getenv("GITHUB_DATA_REPO")
 
         # Try Streamlit secrets when running inside a Streamlit app
         if not _token or not _repo:
@@ -88,13 +88,13 @@ class EventLogger:
                 import streamlit as st
                 if not _token:
                     _token = (
-                        st.secrets.get("GITHUB_DATA_TOKEN")
-                        or st.secrets.get("GITHUB_TOKEN")
+                        st.secrets.get("GITHUB_TOKEN")
+                        or st.secrets.get("GITHUB_DATA_TOKEN")
                     )
                 if not _repo:
                     _repo = (
-                        st.secrets.get("GITHUB_DATA_REPO")
-                        or st.secrets.get("GITHUB_REPO")
+                        st.secrets.get("GITHUB_REPO")
+                        or st.secrets.get("GITHUB_DATA_REPO")
                     )
             except Exception:
                 pass
@@ -114,7 +114,7 @@ class EventLogger:
             "events": events,
         }
         date_str = datetime.now().strftime("%Y-%m-%d")
-        path = f"sessions/{date_str}/{self.session_id}.json"
+        path = f"sessions/agentic_hiring/{date_str}/{self.session_id}.json"
         content = json.dumps(payload, indent=2, ensure_ascii=True, default=str)
         commit_msg = f"Session: {self.participant_id} | {self.condition.condition_id}"
         success, error = save_to_github(_repo, path, content, commit_msg, _token)
