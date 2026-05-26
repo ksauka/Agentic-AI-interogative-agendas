@@ -41,3 +41,6 @@ outputs/*
 
 # Generated persistent vector database; rebuilt from internal study materials
 study/vector_store/
+
+# Researcher-facing protocol documents — not for version control
+study/protocol/
