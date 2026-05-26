@@ -29,7 +29,7 @@ from .conditions import (
 from .decision_agent import AgenticHiringDecisionAgent, create_decision_agent
 from .logger import EventLogger, restored_logger
 from .schemas import AgentState, EvidenceSection
-from .theme import apply_anthrokit_theme, show_study_banner
+from .theme import apply_anthrokit_theme, show_study_banner, show_study_progress
 
 # ─── Fixed study case ─────────────────────────────────────────────────────────
 
@@ -400,15 +400,13 @@ def _screen_0_welcome(state: dict, condition: Condition, logger: EventLogger) ->
         "You will review a candidate CV for a fictional role. An AI assistant will "
         "provide a recommendation. **The final decision is always yours.**"
     )
-    if not os.getenv("OPENAI_API_KEY"):
-        st.warning(
-            "Development fallback active — live RAG is disabled. "
-            "Set `OPENAI_API_KEY` and `AGENTIC_REQUIRE_LIVE_RAG=true` before data collection."
-        )
     pid_default = str(state.get("participant_id") or st.session_state.get("prolific_pid", ""))
+    is_prefilled = bool(pid_default)
     participant_id = st.text_input(
-        "Participant ID (pre-filled from Prolific — do not change unless asked)",
+        "Participant ID",
         value=pid_default,
+        disabled=is_prefilled,
+        help="Automatically filled from your study link." if is_prefilled else "Enter the participant ID provided to you.",
         key="participant_id_input",
     )
     if st.button("Begin task", type="primary", key="begin_task"):
@@ -616,12 +614,20 @@ def _screen_4_cv(
             "Reviewing the candidate materials\u2026" if condition.anthropomorphic_cues
             else "Generating assessment\u2026"
         ):
-            agent.apply_stage1_steering(
-                agent_state,
-                state.get("user_focus_areas", []),
-                state.get("user_focus_text", ""),
-            )
-            agent.generate_recommendation(agent_state)
+            try:
+                agent.apply_stage1_steering(
+                    agent_state,
+                    state.get("user_focus_areas", []),
+                    state.get("user_focus_text", ""),
+                )
+                agent.generate_recommendation(agent_state)
+            except Exception:
+                st.error(
+                    "The assistant encountered a problem preparing the recommendation. "
+                    "Please refresh the page to try again, or notify the researcher "
+                    "if the problem persists."
+                )
+                return
 
     rec_state = agent_state.recommendation_state
     rendered = rec_state.rendered
@@ -669,7 +675,6 @@ def _screen_4_cv(
             index=None,
             placeholder="Choose an area…",
             key=f"hic2_selectbox_{state.get('hic2_count', 0)}",
-            label_visibility="collapsed",
         )
 
         hic2_free_label = (
@@ -689,21 +694,25 @@ def _screen_4_cv(
         with col_examine:
             examine_label = "Examine this" if condition.anthropomorphic_cues else "Examine"
             if st.button(examine_label, type="primary", key="submit_hic2_btn", disabled=not hic2_option):
-                challenge_resp = agent.handle_stage2_challenge(
-                    agent_state, hic2_option or "",
-                    custom_question=hic2_free.strip(),
-                )
-                state["_challenge_text"] = challenge_resp.response_text
-                state["hic2_option"] = hic2_option
-                state["hic2_count"] = state.get("hic2_count", 0) + 1
-                _log(
-                    logger, state, "hic_stage2_submitted",
-                    hic_option=hic2_option,
-                    hic_free_text=hic2_free.strip(),
-                    hic_response=challenge_resp.response_text,
-                    cited_sections=[e.evidence_id for e in challenge_resp.cited_sections],
-                )
-                st.rerun()
+                try:
+                    challenge_resp = agent.handle_stage2_challenge(
+                        agent_state, hic2_option or "",
+                        custom_question=hic2_free.strip(),
+                    )
+                except Exception:
+                    st.error("Could not retrieve a response — please try again.")
+                else:
+                    state["_challenge_text"] = challenge_resp.response_text
+                    state["hic2_option"] = hic2_option
+                    state["hic2_count"] = state.get("hic2_count", 0) + 1
+                    _log(
+                        logger, state, "hic_stage2_submitted",
+                        hic_option=hic2_option,
+                        hic_free_text=hic2_free.strip(),
+                        hic_response=challenge_resp.response_text,
+                        cited_sections=[e.evidence_id for e in challenge_resp.cited_sections],
+                    )
+                    st.rerun()
         with col_skip:
             if st.button("Continue to my decision →", key="hic2_skip_btn"):
                 state["stage2_done"] = True
@@ -851,9 +860,10 @@ def _render_conversational_with_citations(
         styled = _style_section_refs(sentence, label_map)
         st.markdown(styled, unsafe_allow_html=True)
 
-        chip_cols = st.columns(len(sentence_chips))
+        max_cols = min(len(sentence_chips), 4)
+        chip_cols = st.columns(max_cols)
         for i, chip in enumerate(sentence_chips):
-            with chip_cols[i]:
+            with chip_cols[i % max_cols]:
                 _render_chip(chip, state, logger, condition)
             rendered_ids.add(chip.evidence_id)
 
@@ -862,9 +872,10 @@ def _render_conversational_with_citations(
     # Overflow: chips not matched to any sentence (edge case)
     overflow = [c for c in chips if c.evidence_id not in rendered_ids]
     if overflow:
-        ocols = st.columns(len(overflow))
+        max_ocols = min(len(overflow), 4)
+        ocols = st.columns(max_ocols)
         for i, chip in enumerate(overflow):
-            with ocols[i]:
+            with ocols[i % max_ocols]:
                 _render_chip(chip, state, logger, condition, key_suffix="_ov")
 
 
@@ -921,17 +932,26 @@ def _screen_7_decision(
 
 
 def _screen_9_complete(state: dict) -> None:
-    st.success("Task complete. Thank you for participating.")
-    st.write(
-        f"Your decision: **{state.get('decision', '—')}**  \n"
-        f"AI recommendation: **{state.get('ai_recommendation', '—')}**"
+    st.markdown(
+        "<div class='completion-card'>"
+        "<h2>Task complete &#x2713;</h2>"
+        "<p>Thank you for participating in this study.</p>"
+        "</div>",
+        unsafe_allow_html=True,
     )
-    st.caption(f"Session ID: `{state.get('session_id', '—')}`")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Your decision", state.get("decision", "—"))
+    with col2:
+        st.metric("AI recommendation", state.get("ai_recommendation", "—"))
+    st.caption(f"Session reference: {state.get('session_id', '—')}")
+    st.divider()
     if st.session_state.get("has_return_url"):
-        if st.button("Return to survey →", type="primary", key="return_to_survey"):
+        st.info("Click below to return to your survey and complete the questionnaire.")
+        if st.button("Return to survey \u2192", type="primary", key="return_to_survey"):
             back_to_survey(done_flag=True)
     else:
-        st.info("Please return to your survey and continue.")
+        st.info("Please return to your survey tab and continue with the questionnaire.")
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
@@ -942,6 +962,7 @@ def run(condition_id: str) -> None:
 
     st.set_page_config(
         page_title="AI Hiring Decision Assistant",
+        page_icon="🔎",
         layout="centered",
         initial_sidebar_state="collapsed",
     )
@@ -976,6 +997,7 @@ def run(condition_id: str) -> None:
 
     stage = int(state["stage"])
     _record_screen_entry(state, stage)
+    show_study_progress(st, stage)
 
     # Load the single shared agent (cached across reruns)
     agent = _load_cached_agent(condition_id)

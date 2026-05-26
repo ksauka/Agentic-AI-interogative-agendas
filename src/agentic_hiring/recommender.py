@@ -7,9 +7,9 @@ from .schemas import AssessmentPlan, CandidateEvaluation
 BASE_RECOMMENDATION = "Advance to human interview"
 
 # Capability areas where this candidate's evidence is genuinely thin.
-# When a recruiter actively flags these through HIC Stage 1, it signals
-# a concern the available documents cannot resolve — and the recommendation
-# must reflect that rather than override the recruiter's judgement.
+# When a recruiter actively flags any of these through HIC Stage 1, it signals
+# a concern the available documents cannot resolve — the recommendation must
+# reflect that rather than override the recruiter's explicit judgement.
 _UNCERTAIN_AREAS = frozenset({
     "Independent ownership",
     "Structured evaluation or screening experience",
@@ -23,10 +23,10 @@ class RecommendationPolicy:
         Always returns BASE_RECOMMENDATION ("Advance to human interview").
 
     With HIC input (C=1, recruiter provided priorities):
-        Returns "Hold for further review" if the recruiter specifically
-        flagged 2 or more areas where this candidate's evidence is thin.
-        This means the recruiter's choices genuinely change the outcome —
-        the HICs are not decorative.
+        Returns "Hold for further review" if the recruiter flagged at least
+        one area where this candidate's evidence is demonstrably thin.
+        A single flagged evidence gap is sufficient — the HICs are not
+        decorative, and the recruiter's concern must change the outcome.
     """
 
     def recommend(
@@ -39,6 +39,6 @@ class RecommendationPolicy:
             flagged_uncertain = sum(
                 1 for p in plan.user_priorities if p in _UNCERTAIN_AREAS
             )
-            if flagged_uncertain >= 2:
+            if flagged_uncertain >= 1:
                 return "Hold for further review"
         return BASE_RECOMMENDATION

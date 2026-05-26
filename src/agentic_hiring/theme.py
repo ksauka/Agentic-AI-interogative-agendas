@@ -96,6 +96,30 @@ def apply_anthrokit_theme(st) -> None:
             margin-bottom: 1rem;
             color: #495057;
         }
+        /* Chat message body — comfortable reading line height */
+        [data-testid="stChatMessage"] p {
+            line-height: 1.75;
+        }
+        /* Completion card */
+        .completion-card {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 12px;
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .completion-card h2 {
+            color: #166534;
+            margin: 0 0 0.4rem;
+        }
+        .completion-card p {
+            color: #15803d;
+            margin: 0;
+        }
+        /* Divider between document sections */
+        .doc-section + .doc-section {
+            margin-top: 0.5rem;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -113,3 +137,24 @@ def show_study_banner(st) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def show_study_progress(st, stage: int) -> None:
+    """Show a compact step progress bar — hidden on Welcome (0) and Complete (9) screens."""
+    # Map stage numbers to (step_index, label) — only stages that render real screens
+    _STEPS = [
+        (2, "Role description"),
+        (3, "Screening policy"),
+        (4, "Candidate review"),
+        (7, "Final decision"),
+    ]
+    active = None
+    for i, (s, _) in enumerate(_STEPS):
+        if stage >= s:
+            active = i
+    if active is None:
+        return  # Stage 0 (welcome) or unrecognised — no progress bar
+    total = len(_STEPS)
+    step_num = active + 1
+    label = _STEPS[active][1]
+    st.progress(step_num / total, text=f"Step {step_num} of {total} \u2014 {label}")
