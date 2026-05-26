@@ -19,13 +19,12 @@ import streamlit as st
 from .conditions import (
     Condition,
     FOCUS_AREAS,
-    CHALLENGE_AREAS,
-    challenge_areas,
-    post_recommendation_prompt,
+    HIC_STAGE2_OPTIONS,
+    hic_stage1_prompt,
+    hic_stage2_prompt,
     RECOMMENDATION_ACTIONS,
     BASE_RECOMMENDATION,
     get_condition,
-    steering_prompt,
 )
 from .decision_agent import AgenticHiringDecisionAgent, create_decision_agent
 from .logger import EventLogger, restored_logger
@@ -275,14 +274,17 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
         "condition_id": condition.condition_id,
         "explainability": condition.explainability,
         "anthropomorphic_cues": condition.anthropomorphic_cues,
-        "mixed_initiative_control_cues": condition.mixed_initiative_control_cues,
+        "hic": condition.hic,
         "session_start": state.get("session_start", ""),
         "candidate_name": CANDIDATE_NAME,
-        "steering": {
+        "hic_stage1": {
             "user_focus_areas": state.get("user_focus_areas", []),
             "user_focus_text": state.get("user_focus_text", ""),
             "user_focus": state.get("user_focus", ""),
-            "post_reco_option": state.get("post_reco_option", ""),
+        },
+        "hic_stage2": {
+            "hic2_option": state.get("hic2_option", ""),
+            "stage2_done": state.get("stage2_done", False),
         },
         "decision": {
             "final_decision": state.get("decision", ""),
@@ -316,14 +318,13 @@ def _initial_state() -> dict:
         "session_id": "",
         "session_start": "",
         "turn_id": 0,
-        # Pre-recommendation steering (C=1)
-        "user_steering_completed": False,
+        # HIC Stage 1: pre-recommendation checkpoint (C=1)
+        "hic1_completed": False,
         "user_focus_areas": [],
         "user_focus_text": "",
         "user_focus": "",
-        # Post-recommendation challenge (C=1)
-        "post_reco_option": "",
-        "post_reco_logged": False,
+        # HIC Stage 2: post-recommendation checkpoint (C=1)
+        "hic2_option": "",
         "stage2_done": False,
         "reco_generated": False,
         # Judgement settledness (shown after recommendation and any Stage 2 challenge)
@@ -508,26 +509,26 @@ def _screen_4_cv(
 
     st.divider()
 
-    # ── Stage 1: Assessment preferences (C=1, shown below CV before recommendation) ─
-    if condition.mixed_initiative_control_cues and not state.get("reco_generated"):
+    # ── HIC Stage 1: Human Intervention Checkpoint before recommendation ────────
+    if condition.hic and not state.get("reco_generated"):
         with st.chat_message("assistant"):
-            st.write(steering_prompt(condition))
+            st.write(hic_stage1_prompt(condition))
 
         for area in FOCUS_AREAS:
             default = area in state.get("user_focus_areas", [])
             st.checkbox(area, value=default, key=f"focus_{area}")
 
         free_label = (
-            "Tell me anything else you'd like me to consider."
+            "Anything else you would like me to consider? (optional)"
             if condition.anthropomorphic_cues
-            else "Additional comments (optional):"
+            else "Additional area for attention (optional):"
         )
         st.text_area(
             free_label,
             value=state.get("user_focus_text", ""),
             height=80,
             max_chars=500,
-            key="steering_free_text",
+            key="hic1_free_text",
             placeholder=(
                 "e.g. I want to understand whether the candidate can work independently."
                 if condition.anthropomorphic_cues
@@ -559,21 +560,21 @@ def _screen_4_cv(
                 policy_full_viewed=state.get("policy_full_viewed", False),
                 provenance_clicks=state.get("provenance_clicks", 0),
             )
-            if condition.mixed_initiative_control_cues:
+            if condition.hic:
                 collected = [a for a in FOCUS_AREAS if st.session_state.get(f"focus_{a}", False)]
-                collected_text = st.session_state.get("steering_free_text", "").strip()
+                collected_text = st.session_state.get("hic1_free_text", "").strip()
                 state["user_focus_areas"] = collected
                 state["user_focus_text"] = collected_text
                 focus_parts = list(collected)
                 if collected_text:
                     focus_parts.append(collected_text)
                 state["user_focus"] = "; ".join(focus_parts)
-                state["user_steering_completed"] = True
+                state["hic1_completed"] = True
                 _log(
-                    logger, state, "pre_recommendation_steering",
-                    user_focus_areas=collected,
-                    user_focus_text=collected_text,
-                    user_focus=state["user_focus"],
+                    logger, state, "hic_stage1_completed",
+                    hic_stage1_areas=collected,
+                    hic_stage1_free_text=collected_text,
+                    hic_stage1_combined=state["user_focus"],
                 )
             state["reco_generated"] = True
             st.rerun()
@@ -603,7 +604,7 @@ def _screen_4_cv(
             condition_id=condition.condition_id,
             explainability=condition.explainability,
             anthropomorphic_cues=condition.anthropomorphic_cues,
-            mixed_initiative_control_cues=condition.mixed_initiative_control_cues,
+            hic=condition.hic,
             citation_chips=[s.evidence_id for s in rendered.citation_chips],
         )
         state["recommendation_logged"] = True
@@ -615,83 +616,73 @@ def _screen_4_cv(
         else:
             st.write(rendered.text)
 
-    # ── Stage 2: Additional review request (C=1 only) ─────────────────────────
-    _SKIP = (
-        "No \u2014 I'm ready to continue"
-        if condition.anthropomorphic_cues
-        else "No \u2014 continue to decision"
-    )
-    _CUSTOM_Q = (
-        "Ask a different question"
-        if condition.anthropomorphic_cues
-        else "Other query"
-    )
-    _areas = challenge_areas(condition)
+    # ── HIC Stage 2: Human Intervention Checkpoint after recommendation ────────
 
-    if condition.mixed_initiative_control_cues and not state.get("stage2_done"):
+    if condition.hic and not state.get("stage2_done"):
         has_response = bool(state.get("_challenge_text"))
 
         if not has_response:
             with st.chat_message("assistant"):
-                st.write(post_recommendation_prompt(condition))
-
-        if has_response:
+                st.write(hic_stage2_prompt(condition))
+        else:
             with st.chat_message("assistant"):
                 st.write(state["_challenge_text"])
 
         select_label = (
-            "What else would you like to examine?" if has_response
-            else "What would you like me to examine?" if condition.anthropomorphic_cues
-            else "Select an area for additional assessment:"
+            "Would you like to look at something else?"
+            if has_response
+            else "Select an area to examine:"
         )
-        post_option = st.selectbox(
+        hic2_option = st.selectbox(
             select_label,
-            options=[_SKIP] + _areas,
-            index=0,
-            key="post_reco_selectbox",
+            options=HIC_STAGE2_OPTIONS,
+            index=None,
+            placeholder="Choose an area…",
+            key="hic2_selectbox",
             label_visibility="collapsed",
         )
 
-        if post_option == _SKIP:
-            state["stage2_done"] = True
-            st.rerun()
-        elif post_option:
-            custom_q = ""
-            if post_option == _CUSTOM_Q:
-                custom_q = st.text_area(
-                    "What would you like me to examine?" if condition.anthropomorphic_cues else "Enter your query:",
-                    height=80,
-                    max_chars=500,
-                    key="custom_challenge_input",
-                    placeholder="e.g. How does the candidate's experience compare to typical applicants for this role?",
-                )
-            review_btn = (
-                "Review this aspect"
-                if condition.anthropomorphic_cues
-                else "Generate additional assessment"
-            )
-            if st.button(review_btn, type="primary", key="submit_challenge_btn"):
-                cache_key = f"challenge_{post_option}_{custom_q[:30]}"
-                state["post_reco_option"] = cache_key
+        hic2_free_label = (
+            "Anything specific you would like me to focus on? (optional)"
+            if condition.anthropomorphic_cues
+            else "Additional context (optional):"
+        )
+        hic2_free = st.text_area(
+            hic2_free_label,
+            height=70,
+            max_chars=500,
+            key="hic2_free_text",
+            placeholder="Optional — add any specific focus or context here.",
+        )
+
+        col_examine, col_skip = st.columns([1, 1])
+        with col_examine:
+            examine_label = "Examine this" if condition.anthropomorphic_cues else "Examine"
+            if st.button(examine_label, type="primary", key="submit_hic2_btn", disabled=not hic2_option):
                 challenge_resp = agent.handle_stage2_challenge(
-                    agent_state, post_option, custom_question=custom_q
+                    agent_state, hic2_option or "",
+                    custom_question=hic2_free.strip(),
                 )
                 state["_challenge_text"] = challenge_resp.response_text
-                if not state["post_reco_logged"]:
-                    _log(
-                        logger, state, "additional_review_requested",
-                        option=post_option,
-                        custom_question=custom_q,
-                        follow_up=challenge_resp.response_text,
-                    )
-                    state["post_reco_logged"] = True
+                state["hic2_option"] = hic2_option
+                _log(
+                    logger, state, "hic_stage2_submitted",
+                    hic_option=hic2_option,
+                    hic_free_text=hic2_free.strip(),
+                    hic_response=challenge_resp.response_text,
+                    cited_sections=[e.evidence_id for e in challenge_resp.cited_sections],
+                )
+                st.rerun()
+        with col_skip:
+            if st.button("Continue to my decision →", key="hic2_skip_btn"):
+                state["stage2_done"] = True
+                _log(logger, state, "hic_stage2_skipped")
                 st.rerun()
 
     # ── Judgement Settledness ──────────────────────────────────────────────────
     show_settledness = (
-        not condition.mixed_initiative_control_cues
+        not condition.hic
         or state.get("stage2_done")
-        or bool(state.get("_challenge_text"))
     )
     if show_settledness:
         st.divider()
@@ -713,7 +704,7 @@ def _screen_4_cv(
                     recommendation=rec_state.recommendation,
                     provenance_clicks=state.get("provenance_clicks", 0),
                     evidence_inspected=bool(state.get("evidence_inspection_logged")),
-                    post_reco_explored=bool(state.get("post_reco_logged")),
+                    hic_stage2_explored=bool(state.get("hic2_option")),
                 )
                 state["judgement_settledness_logged"] = True
             state["stage"] = 7
@@ -755,49 +746,29 @@ def _render_inline_citations(
     colored = _colorize_section_refs(text, label_map)
     st.markdown(colored, unsafe_allow_html=True)
 
-    # Real Streamlit buttons hidden by JS; triggered when the user clicks a cite span
-    for section in chips:
-        btn_label = f"__nav__{section.evidence_id}"
-        if st.button(btn_label, key=f"cite_nav_{section.evidence_id}"):
-            state["doc_view"] = section.evidence_id
-            state["doc_view_from"] = "recommendation"
-            state["provenance_clicks"] += 1
-            _log(
-                logger, state, "citation_clicked",
-                evidence_id=section.evidence_id,
-                section_label=section.section_label,
-                provenance_click_count=state["provenance_clicks"],
-            )
-            st.rerun()
-
-    # JS: hide __nav__ buttons + forward .stCiteRef span clicks → button clicks
-    st.markdown(
-        """<script>(function () {
-  function wire() {
-    document.querySelectorAll('button').forEach(function (b) {
-      if (b.textContent.trim().startsWith('__nav__')) {
-        var w = b.closest('[data-testid="stButton"]') || b.parentElement;
-        if (w) w.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;';
-      }
-    });
-    document.querySelectorAll('.stCiteRef').forEach(function (span) {
-      if (span.__citeWired) return;
-      span.__citeWired = true;
-      span.addEventListener('click', function () {
-        var target = '__nav__' + this.getAttribute('data-eid');
-        document.querySelectorAll('button').forEach(function (b) {
-          if (b.textContent.trim() === target) b.click();
-        });
-      });
-    });
-  }
-  wire();
-  setTimeout(wire, 200);
-  setTimeout(wire, 800);
-  new MutationObserver(wire).observe(document.body, { childList: true, subtree: true });
-})();</script>""",
-        unsafe_allow_html=True,
-    )
+    # Citation chip buttons — one per cited section, clearly labelled for navigation
+    _DOC_ABBREV = {
+        "role_description": "Role Description",
+        "screening_policy": "Screening Policy",
+        "candidate_cv": "CV",
+    }
+    st.write("")
+    cols = st.columns(min(len(chips), 3))
+    for i, section in enumerate(chips):
+        doc_abbr = _DOC_ABBREV.get(section.document_key, section.document_key.replace("_", " ").title())
+        btn_label = f"↗ {section.section_label} — {doc_abbr}"
+        with cols[i % len(cols)]:
+            if st.button(btn_label, key=f"cite_nav_{section.evidence_id}", use_container_width=True):
+                state["doc_view"] = section.evidence_id
+                state["doc_view_from"] = "recommendation"
+                state["provenance_clicks"] += 1
+                _log(
+                    logger, state, "citation_clicked",
+                    evidence_id=section.evidence_id,
+                    section_label=section.section_label,
+                    provenance_click_count=state["provenance_clicks"],
+                )
+                st.rerun()
 
 
 def _show_section_view(
@@ -897,19 +868,14 @@ def run(condition_id: str) -> None:
 
     st.set_page_config(
         page_title="AI Hiring Decision Assistant",
-        layout="wide",
+        layout="centered",
         initial_sidebar_state="collapsed",
     )
     apply_anthrokit_theme(st)
-    # Widen the content column and chat bubbles beyond Streamlit's default constraint
+    # Allow chat bubbles to fill the 860 px reading column set by theme.py
     st.markdown(
         """
         <style>
-        section[data-testid="stMain"] .block-container {
-            max-width: 900px !important;
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
-        }
         div[data-testid="stChatMessageContent"] { max-width: 100% !important; }
         </style>
         """,

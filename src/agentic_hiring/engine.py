@@ -49,6 +49,23 @@ class Assessment:
     generation_backend: str = "protocol_fallback"
 
 
+@dataclass(frozen=True)
+class Citation:
+    """Section-level citation for embedding in recommendation text."""
+    label: str       # e.g. "Section 5.2 of the Role Description"
+    section_id: str  # e.g. "role_section_5_2"
+    text: str = ""   # excerpt for click-logging
+
+    @property
+    def link(self) -> str:
+        return f"[{self.label}](#{self.section_id})"
+
+
+def citation_link(label: str, section_id: str) -> str:
+    """Return a markdown link to a section anchor."""
+    return f"[{label}](#{section_id})"
+
+
 def _tokens(text: str) -> set[str]:
     return {
         token for token in re.findall(r"[a-z][a-z-]+", text.lower())
@@ -59,14 +76,9 @@ def _tokens(text: str) -> set[str]:
 class HiringRAGAssistant:
     """One assistant: reads case documents, retrieves evidence, and recommends."""
 
-    def __init__(
-        self, case_path: Path | str = DEFAULT_CASE_PATH, *, candidate_text: str | None = None,
-        candidate_name: str = "Uploaded candidate CV",
-    ):
+    def __init__(self, case_path: Path | str = DEFAULT_CASE_PATH) -> None:
         self.case_path = Path(case_path)
         self.case = json.loads(self.case_path.read_text(encoding="utf-8"))
-        self.candidate_text = candidate_text
-        self.candidate_name = candidate_name
         self.policy_path = DEFAULT_POLICY_PATH
         self.role_path = DEFAULT_ROLE_PATH
         self.documents = self._flatten_documents()
@@ -86,9 +98,6 @@ class HiringRAGAssistant:
                 source = self._role_material()
             else:
                 source = self.case[key]
-            if key == "candidate_cv" and self.candidate_text is not None:
-                evidence.append(Evidence("cv_uploaded", display_name, self.candidate_name, self.candidate_text))
-                continue
             for section in source["sections"]:
                 evidence.append(
                     Evidence(section["id"], display_name, section["heading"], section["text"])
@@ -101,25 +110,18 @@ class HiringRAGAssistant:
             return self._policy_material()
         if name == "role_description":
             return self._role_material()
-        if name == "candidate_cv" and self.candidate_text is not None:
-            return {
-                "title": self.candidate_name,
-                "sections": [
-                    {"id": "cv_uploaded", "heading": "Uploaded CV text", "text": self.candidate_text}
-                ],
-            }
         return self.case[name]
 
     def _section_material(self, path: Path, title: str, prefix: str) -> dict:
         """Parse a canonical numbered knowledge-base document for provenance."""
         text = path.read_text(encoding="utf-8")
         matches = re.finditer(
-            r"^### (Section (\d+)\. [^\n]+)\n(.*?)(?=^### Section \d+\.|\Z)",
+            r"^#{2,4}\s+(Section\s+(\d+(?:\.\d+)?)\.\s+[^\n]+)\n(.*?)(?=^#{2,4}\s+Section\s+\d+(?:\.\d+)?\.)|\Z)",
             text, re.MULTILINE | re.DOTALL,
         )
         sections = [
             {
-                "id": f"{prefix}_section_{match.group(2)}",
+                "id": f"{prefix}_section_{match.group(2).replace('.', '_')}",
                 "heading": match.group(1),
                 "text": match.group(3).strip(),
             }
@@ -164,23 +166,6 @@ class HiringRAGAssistant:
         """Run the shared retrieval-grounded decision step for every condition."""
         rule = self.case["fixed_assessment"]
         retrieved = self.retrieve(rule["retrieval_query"], top_k=len(self.documents))
-        if self.candidate_text is not None:
-            return Assessment(
-                recommendation=rule["recommendation"],
-                retrieved=retrieved,
-                supporting=retrieved,
-                caution=(),
-                generated_basis={
-                    "candidate_evidence": "An uploaded CV was received for development preview.",
-                    "company_basis": "Enable live RAG for a document-grounded organisational-context assessment.",
-                    "company_citation": "Company context",
-                    "uncertain_capability": "Live model assessment is unavailable in local fallback mode.",
-                    "role_basis": "Enable live RAG for a document-grounded role assessment.",
-                    "role_citation": "Section 5.4",
-                    "policy_basis": "Enable live RAG for a document-grounded recommendation.",
-                    "policy_citation": "Section 9.2",
-                },
-            )
         retrieved_by_id = {item.evidence_id: item for item in retrieved}
 
         def selected(ids: Iterable[str]) -> tuple[Evidence, ...]:
@@ -202,120 +187,133 @@ class HiringRAGAssistant:
         basis = assessment.generated_basis or {}
         rec = assessment.recommendation
 
-        # --- Build the core conversational paragraph ---
         if condition.explainability and condition.anthropomorphic_cues:
-            # High E + High A: warm, fluent, grounded, provenance embedded naturally
-            text = self._response_high_e_high_a(rec, basis)
+            return self._response_high_e_high_a(rec, basis, user_focus)
         elif condition.explainability and not condition.anthropomorphic_cues:
-            # High E + Low A: structured but neutral grounded explanation
-            text = self._response_high_e_low_a(rec, basis)
+            return self._response_high_e_low_a(rec, basis, user_focus)
         elif not condition.explainability and condition.anthropomorphic_cues:
-            # Low E + High A: warm, brief, social — minimal rationale
-            text = self._response_low_e_high_a(rec)
+            return self._response_low_e_high_a(rec, user_focus)
         else:
-            # Low E + Low A: terse, impersonal
-            text = self._response_low_e_low_a(rec)
+            return self._response_low_e_low_a(rec, user_focus)
 
-        # --- Acknowledge user steering focus if mixed-initiative and focus was given ---
-        if condition.mixed_initiative_control_cues and user_focus.strip():
-            if condition.anthropomorphic_cues:
-                focus_note = (
-                    f"You asked me to pay particular attention to: *{user_focus.strip()}*. "
-                    "I have tried to address those priorities in the assessment above."
-                )
-            else:
-                focus_note = (
-                    f"Stated recruiter priorities: *{user_focus.strip()}*. "
-                    "The assessment above addresses those criteria."
-                )
-            return f"{text}\n\n---\n\n{focus_note}"
-
-        return text
-
-    def _response_high_e_high_a(self, rec: str, basis: dict) -> str:
+    def _response_high_e_high_a(self, rec: str, basis: dict, user_focus: str = "") -> str:
         candidate_ev = basis.get("candidate_evidence", "relevant coordination and process experience")
         uncertain = basis.get("uncertain_capability", "direct end-to-end talent screening ownership")
         role_cite = basis.get("role_citation", "Section 5.2")
         policy_cite = basis.get("policy_citation", "Section 7.2")
         company_basis = basis.get("company_basis", "the organisation's operational context")
+        role_anchor = self._make_anchor(role_cite, "role")
+        policy_anchor = self._make_anchor(policy_cite, "policy")
+        preamble = (
+            f"You asked me to pay particular attention to {user_focus.strip()}. "
+            f"Looking at the CV through that lens, "
+        ) if user_focus.strip() else ""
         return (
-            f"I would keep this candidate in consideration rather than screen them out at this stage. "
+            f"{preamble}I would keep this candidate in consideration rather than screen them out at this stage. "
             f"There is meaningful evidence of {candidate_ev}, which fits important parts of this role — "
             f"especially the coordination and independent execution expectations in "
-            f"[{role_cite} of the Role Description](#role_description). "
+            f"[{role_cite} of the Role Description](#{role_anchor}). "
             f"What gives me pause is that {uncertain}, so I would not move straight to interview with confidence. "
             f"At the same time, the screening policy makes clear in "
-            f"[{policy_cite} of the Screening Policy](#screening_policy) that exact role wording "
+            f"[{policy_cite} of the Screening Policy](#{policy_anchor}) that exact role wording "
             f"should not be treated as decisive where transferable evidence is present. "
             f"Given {company_basis}, my recommendation is **{rec}** — "
-            f"keeping the application under active review. The final call is yours."
+            f"{self._action_phrase(rec)}. The final call is yours."
         )
 
-    def _response_high_e_low_a(self, rec: str, basis: dict) -> str:
+    def _response_high_e_low_a(self, rec: str, basis: dict, user_focus: str = "") -> str:
         candidate_ev = basis.get("candidate_evidence", "partial coordination and process evidence")
         uncertain = basis.get("uncertain_capability", "direct end-to-end talent screening ownership")
         role_cite = basis.get("role_citation", "Section 5.2")
         policy_cite = basis.get("policy_citation", "Section 7.2")
         company_basis = basis.get("company_basis", "the organisation is scaling and needs reliable talent coordination")
+        role_anchor = self._make_anchor(role_cite, "role")
+        policy_anchor = self._make_anchor(policy_cite, "policy")
+        focus_note = f"Stated priorities: *{user_focus.strip()}*. " if user_focus.strip() else ""
         return (
-            f"**Assessment:** The candidate shows {candidate_ev}, consistent with "
-            f"[{role_cite} of the Role Description](#role_description). "
+            f"{focus_note}**Assessment:** The candidate shows {candidate_ev}, consistent with "
+            f"[{role_cite} of the Role Description](#{role_anchor}). "
             f"However, {uncertain} is not clearly demonstrated. "
             f"Company context: {company_basis}. "
-            f"Under [{policy_cite} of the Screening Policy](#screening_policy), "
+            f"Under [{policy_cite} of the Screening Policy](#{policy_anchor}), "
             f"transferable evidence should be weighed where direct wording is absent.\n\n"
             f"**Recommended action: {rec}.**"
         )
 
-    def _response_low_e_high_a(self, rec: str) -> str:
+    def _response_low_e_high_a(self, rec: str, user_focus: str = "") -> str:
+        focus_note = f"You asked me to focus on: *{user_focus.strip()}*. " if user_focus.strip() else ""
         return (
-            f"I have reviewed the candidate against the role materials. "
+            f"{focus_note}I have reviewed the candidate against the role materials. "
             f"There are some relevant strengths here, though the picture is not entirely clear-cut. "
             f"My recommendation is **{rec}**.\n\n"
             f"The final screening decision remains yours."
         )
 
-    def _response_low_e_low_a(self, rec: str) -> str:
-        return (
-            f"**Assessment:** Available evidence is incomplete for immediate progression.\n\n"
-            f"**Recommended action: {rec}.**"
-        )
+    def _response_low_e_low_a(self, rec: str, user_focus: str = "") -> str:
+        if "Advance" in rec:
+            assessment_text = "The candidate meets enough screening criteria for progression."
+        elif "Hold" in rec:
+            assessment_text = "Available evidence is incomplete for an immediate progression decision."
+        else:
+            assessment_text = "The candidate does not meet the screening threshold for progression."
+        focus_note = f"Priorities noted: *{user_focus.strip()}*. " if user_focus.strip() else ""
+        return f"{focus_note}**Assessment:** {assessment_text}\n\n**Recommended action: {rec}.**"
+
+    @staticmethod
+    def _action_phrase(rec: str) -> str:
+        if "Advance" in rec:
+            return "moving the candidate to a human interview while using the interview to test the remaining uncertainty"
+        if "Hold" in rec:
+            return "keeping the application under further review before making a progression decision"
+        return "not progressing the application at this stage"
+
+    @staticmethod
+    def _make_anchor(citation_str: str, prefix: str) -> str:
+        """First section number in citation string → anchor ID. 'Section 5.2' + 'role' → 'role_section_5_2'."""
+        match = re.search(r"Section\s+(\d+(?:\.\d+)?)", citation_str)
+        if match:
+            return f"{prefix}_section_{match.group(1).replace('.', '_')}"
+        return prefix
 
     POST_REASSESSMENT_OPTIONS = [
-        "Show the strongest reason to advance this candidate",
+        "Show the strongest reason to advance the candidate",
         "Show the strongest reason for caution",
-        "Reassess with more weight on transferable evidence",
-        "Reassess with more weight on direct role experience",
-        "Summarise the case for interview progression",
-        "Summarise the case for holding the application",
+        "Identify which requirements remain uncertain",
+        "Explain what information is still missing",
+        "Reassess using a stricter interpretation of the screening policy",
+        "Reassess using more weight on transferable evidence",
     ]
 
     def reassessment_response(
         self, option: str, condition: Condition, assessment: Assessment
     ) -> str:
-        """Return a targeted follow-up passage for a post-recommendation steering option."""
+        """Return a targeted follow-up passage for a post-recommendation challenge option."""
         basis = assessment.generated_basis or {}
-        candidate_ev = basis.get("candidate_evidence", "relevant coordination and process evidence")
+        candidate_ev = basis.get("candidate_evidence", "relevant coordination and process experience")
         uncertain = basis.get("uncertain_capability", "direct end-to-end talent screening ownership")
         role_cite = basis.get("role_citation", "Section 5.4")
         policy_cite = basis.get("policy_citation", "Section 7.2")
         warm = condition.anthropomorphic_cues
+        role_anchor = self._make_anchor(role_cite, "role")
+        policy_anchor = self._make_anchor(policy_cite, "policy")
+        opt = option.lower()
 
-        if "advance" in option.lower():
+        if "advance" in opt:
             if warm:
                 return (
                     f"The strongest case for advancing: {candidate_ev}. "
-                    f"[{role_cite} of the Role Description](#role_description) supports "
+                    f"[{role_cite} of the Role Description](#{role_anchor}) supports "
                     f"this as evidence of structured coordination capacity. "
                     f"If you weight transferable evidence, there is a reasonable basis to progress."
                 )
             return (
                 f"Strongest advancement basis: {candidate_ev} "
-                f"([{role_cite} Role Description](#role_description)). "
-                f"Transferable evidence under [{policy_cite} Screening Policy](#screening_policy) "
+                f"([{role_cite} Role Description](#{role_anchor})). "
+                f"Transferable evidence under [{policy_cite} Screening Policy](#{policy_anchor}) "
                 f"supports progression consideration."
             )
-        if "caution" in option.lower():
+
+        if "caution" in opt:
             if warm:
                 return (
                     f"The main reason for caution: {uncertain}. "
@@ -325,58 +323,76 @@ class HiringRAGAssistant:
             return (
                 f"Primary caution: {uncertain}. "
                 f"Direct evidence absent from retrieved materials. "
-                f"[{role_cite} Role Description](#role_description) identifies this as a required capability."
+                f"[{role_cite} Role Description](#{role_anchor}) identifies this as a required capability."
             )
-        if "transferable" in option.lower():
+
+        if "uncertain" in opt:
+            if warm:
+                return (
+                    f"The requirements that remain uncertain are primarily around {uncertain}. "
+                    f"[{role_cite} of the Role Description](#{role_anchor}) sets expectations "
+                    f"that the CV does not clearly address. An interview would be the natural next "
+                    f"step to test whether the underlying capability is present."
+                )
+            return (
+                f"Uncertain requirement: {uncertain}. "
+                f"Not clearly evidenced against [{role_cite} Role Description](#{role_anchor}). "
+                f"An interview would be required to verify."
+            )
+
+        if "missing" in opt:
+            if warm:
+                return (
+                    f"The main information still missing: direct evidence of {uncertain}. "
+                    f"The CV shows coordination and process work, but does not confirm independent "
+                    f"end-to-end ownership of screening decisions. That gap is the main source of "
+                    f"ambiguity in the current assessment."
+                )
+            return (
+                f"Missing information: direct evidence of {uncertain}. "
+                f"CV provides coordination evidence but does not confirm independent screening authority."
+            )
+
+        if "stricter" in opt:
+            if warm:
+                return (
+                    f"Under a stricter reading of the screening policy, the absence of direct "
+                    f"end-to-end talent screening experience would weigh more heavily. "
+                    f"[{policy_cite} of the Screening Policy](#{policy_anchor}) allows "
+                    f"transferable evidence to substitute for direct wording, but a strict "
+                    f"reading would require more explicit evidence before progression."
+                )
+            return (
+                f"Stricter policy reading: [{policy_cite} Screening Policy](#{policy_anchor}) "
+                f"transferability clause requires credible capability signal. "
+                f"Under strict interpretation, {uncertain} gap weakens the progression case."
+            )
+
+        if "transferable" in opt:
             if warm:
                 return (
                     f"Weighting transferable evidence more heavily: the coordination, stakeholder "
                     f"management, and structured follow-through in the CV suggest credible underlying "
-                    f"capability. Under [{policy_cite} of the Screening Policy](#screening_policy), "
+                    f"capability. Under [{policy_cite} of the Screening Policy](#{policy_anchor}), "
                     f"this supports keeping the candidate in further review."
                 )
             return (
                 f"Transferable-evidence weighting: coordination and process evidence supports "
-                f"[{policy_cite} Screening Policy](#screening_policy) transferability clause. "
+                f"[{policy_cite} Screening Policy](#{policy_anchor}) transferability clause. "
                 f"Recommended outcome remains: **{assessment.recommendation}**."
             )
-        if "direct" in option.lower():
-            if warm:
-                return (
-                    f"Weighting direct experience more heavily: the CV does not clearly show "
-                    f"{uncertain}. If direct role match is the primary criterion, the case for "
-                    f"progression is weaker, but rejection would need to rule out all transferable "
-                    f"routes under [{policy_cite} of the Screening Policy](#screening_policy)."
-                )
-            return (
-                f"Direct-experience weighting: {uncertain} not clearly demonstrated. "
-                f"Progression basis weakens under strict direct-match reading. "
-                f"Rejection requires ruling out transferable evidence "
-                f"([{policy_cite} Screening Policy](#screening_policy))."
-            )
-        if "interview" in option.lower():
-            if warm:
-                return (
-                    f"For interview progression: {candidate_ev} maps onto structured coordination "
-                    f"requirements. If you judge the transferable evidence sufficient and the "
-                    f"remaining uncertainty interview-resolvable, progression is defensible."
-                )
-            return (
-                f"Interview progression case: {candidate_ev} supports "
-                f"[{role_cite} Role Description](#role_description). "
-                f"Uncertainty on {uncertain} is interview-resolvable."
-            )
-        # hold
+
+        # Default fallback
         if warm:
             return (
                 f"For holding the application: material uncertainty on {uncertain} remains. "
                 f"Further review preserves optionality without premature exclusion, consistent "
-                f"with [Section 12.2 of the Screening Policy](#screening_policy)."
+                f"with [Section 6.4 of the Screening Policy](#policy_section_6_4)."
             )
         return (
             f"Hold basis: {uncertain} unresolved. "
             f"Further review is policy-consistent "
-            f"([Section 12.2 Screening Policy](#screening_policy))."
+            f"([Section 6.4 Screening Policy](#policy_section_6_4))."
         )
 
     @staticmethod
@@ -387,9 +403,9 @@ class HiringRAGAssistant:
         raise ValueError(f"Missing configured evidence: {evidence_id}")
 
     @staticmethod
-    def retrieved_summary(assessment: Assessment) -> str:
-        """Produce an inspectable evidence view when a participant requests it."""
-        lines = ["### Retrieved evidence available for inspection"]
+    def debug_retrieved_summary(assessment: Assessment) -> str:
+        """Developer tool: inspectable evidence view. NOT for participant-facing UI."""
+        lines = ["### [DEBUG] Retrieved evidence"]
         for item in assessment.retrieved[:5]:
             lines.append(f"- **{item.document} — {item.heading}:** {item.text}")
         return "\n".join(lines)

@@ -3,45 +3,44 @@
 from dataclasses import dataclass
 
 
-# ── Stage 1: assessment preference options (C=1) ───────────────────────────
+# ── HIC Stage 1: assessment preference options (C=1) ──────────────────────────
+# These are the checkbox labels shown to participants at HIC Stage 1.
+# Internal research terms (MICC, interrogative agenda, steering) must not appear.
 FOCUS_AREAS = [
     "Independent ownership",
-    "Communication and stakeholder management",
+    "Stakeholder communication",
     "Transferable experience",
-    "Screening and evaluation experience",
+    "Structured evaluation or screening experience",
     "Operational coordination",
     "Growth potential",
-    "Something else",
+    "Other concern",
 ]
 
-# ── Stage 2: additional review options — condition-dependent labels (C=1) ──
-CHALLENGE_AREAS_HIGH_A = [
-    "Show me the strongest evidence supporting interview progression",
-    "Show me the strongest reason for caution",
-    "Explain how transferable experience influenced the recommendation",
-    "Explain which role requirements are not fully demonstrated",
-    "Review the candidate using stricter criteria",
-    "Review the candidate with greater emphasis on growth potential",
-    "Ask a different question",
+# ── HIC Stage 2: inspection options (C=1) ─────────────────────────────────────
+# Participant-facing labels only. No internal research terms.
+HIC_STAGE2_OPTIONS = [
+    "Strongest evidence supporting progression",
+    "Strongest reason for caution",
+    "Transferable experience interpretation",
+    "Unmet role requirements",
+    "Stricter review",
+    "Growth potential review",
+    "Other question",
 ]
 
-CHALLENGE_AREAS_LOW_A = [
-    "Supporting evidence",
-    "Caution evidence",
-    "Transferable evidence interpretation",
-    "Unmet requirements",
-    "Stricter evaluation criteria",
-    "Growth potential emphasis",
-    "Other query",
-]
-
-# Legacy alias (kept for any external imports)
-CHALLENGE_AREAS = CHALLENGE_AREAS_HIGH_A
+# Legacy aliases kept for backward compatibility
+CHALLENGE_AREAS_HIGH_A = HIC_STAGE2_OPTIONS
+CHALLENGE_AREAS_LOW_A = HIC_STAGE2_OPTIONS
+CHALLENGE_AREAS = HIC_STAGE2_OPTIONS
 
 
-def challenge_areas(condition: "Condition") -> list:
-    """Return the Stage 2 option list appropriate for this condition's anthropomorphism level."""
-    return CHALLENGE_AREAS_HIGH_A if condition.anthropomorphic_cues else CHALLENGE_AREAS_LOW_A
+def hic_stage2_options(condition: "Condition") -> list:
+    """Return the HIC Stage 2 option list for this condition."""
+    return HIC_STAGE2_OPTIONS
+
+
+# Backward-compatibility alias
+challenge_areas = hic_stage2_options
 
 # ── Fixed labels shared by all conditions ──────────────────────────────────
 RECOMMENDATION_ACTIONS = [
@@ -59,7 +58,12 @@ class Condition:
     condition_id: str
     explainability: bool
     anthropomorphic_cues: bool
-    mixed_initiative_control_cues: bool
+    hic: bool  # Human Intervention Checkpoints
+
+    @property
+    def mixed_initiative_control_cues(self) -> bool:
+        """Backward-compatibility alias for hic."""
+        return self.hic
 
     @property
     def label(self) -> str:
@@ -67,7 +71,7 @@ class Condition:
             f"Condition {self.app_number}: "
             f"E={'High' if self.explainability else 'Low'}, "
             f"A={'High' if self.anthropomorphic_cues else 'Low'}, "
-            f"C={'Yes' if self.mixed_initiative_control_cues else 'No'}"
+            f"HIC={'Yes' if self.hic else 'No'}"
         )
 
 
@@ -90,30 +94,40 @@ def get_condition(condition_id: str) -> Condition:
         raise ValueError(f"Unknown condition: {condition_id}") from exc
 
 
-def steering_prompt(condition: Condition) -> str:
-    """Return the Stage 1 assessment-preference invitation for C=1 conditions."""
-    if not condition.mixed_initiative_control_cues:
+def hic_stage1_prompt(condition: "Condition") -> str:
+    """Return the HIC Stage 1 invitation shown to participants before recommendation."""
+    if not condition.hic:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before I review the candidate, it would help me to understand what matters "
-            "most to you for this role. Is there anything you would like me to pay "
+            "Before I review the candidate, is there anything you would like me to pay "
             "particular attention to?"
         )
     return (
-        "Select any areas that should receive additional attention during candidate assessment."
+        "Before generating the assessment: select any areas that should receive "
+        "closer attention during candidate review."
     )
 
 
-def post_recommendation_prompt(condition: Condition) -> str:
-    """Return the Stage 2 additional-review invitation for C=1 conditions."""
-    if not condition.mixed_initiative_control_cues:
+# Backward-compatibility alias
+steering_prompt = hic_stage1_prompt
+
+
+def hic_stage2_prompt(condition: "Condition") -> str:
+    """Return the HIC Stage 2 invitation shown after the recommendation."""
+    if not condition.hic:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before you make your final decision, would you like me to look more closely "
-            "at any aspect of the candidate?"
+            "Before making your final decision, would you like me to look more closely "
+            "at any aspect of the recommendation?"
         )
     return (
-        "Additional assessment options are available before you make your final decision."
+        "Before you proceed to your final decision, you can request a closer look "
+        "at any aspect of the assessment."
     )
+
+
+# Backward-compatibility alias
+post_recommendation_prompt = hic_stage2_prompt
+

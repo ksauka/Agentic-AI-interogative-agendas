@@ -98,6 +98,7 @@ class AgenticHiringDecisionAgent:
             evaluation,
             self.condition,
             state.stage1_priorities,
+            user_notes=state.stage1_free_text,
         )
 
         state.evaluation = evaluation
@@ -115,7 +116,7 @@ class AgenticHiringDecisionAgent:
         custom_question: str = "",
     ) -> ChallengeResponse:
         """Generate a Stage 2 challenge response without changing recommendation."""
-        query = custom_question if challenge.lower() == "ask a custom question" else challenge
+        query = custom_question if custom_question.strip() else challenge
         evidence = self._retriever.retrieve_for_challenge(query, top_k=5)
         response_text = self._renderer.render_challenge_response(
             challenge if challenge.lower() != "ask a custom question" else custom_question,
