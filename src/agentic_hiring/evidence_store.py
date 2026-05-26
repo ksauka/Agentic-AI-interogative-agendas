@@ -1,8 +1,9 @@
 """Document parsing and evidence retrieval store.
 
 Parses knowledge-base markdown files into subsection-level EvidenceSection
-objects and provides keyword-scored search.  All parsing is deterministic —
-no randomness is introduced here.
+objects and provides semantic search over the corpus.  The main recommendation
+retrieval uses fixed section IDs (deterministic); semantic search is used only
+for the free-text challenge and priority paths.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import re
 from pathlib import Path
 
 from .schemas import EvidenceSection
+from .semantic_search import SemanticEvidenceSearch
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,7 @@ class EvidenceStore:
         self._by_doc: dict[str, list[EvidenceSection]] = {}
         for s in sections:
             self._by_doc.setdefault(s.document_key, []).append(s)
+        self._semantic = SemanticEvidenceSearch(sections)
 
     def get(self, evidence_id: str) -> EvidenceSection | None:
         return self._by_id.get(evidence_id)
@@ -119,19 +122,12 @@ class EvidenceStore:
         return [s for eid in evidence_ids if (s := self._by_id.get(eid)) is not None]
 
     def search(self, query: str, top_k: int = 8) -> list[EvidenceSection]:
-        """Return top-k sections by keyword overlap with query."""
-        stop = {"the", "a", "an", "and", "or", "of", "in", "to", "for",
-                "is", "are", "where", "that", "this", "with", "shall", "not",
-                "may", "be", "on", "at", "by", "it", "its", "has", "have"}
-        query_words = set(re.findall(r"\w+", query.lower())) - stop
-        scored: list[tuple[int, EvidenceSection]] = []
-        for s in self.sections:
-            text_words = set(re.findall(r"\w+", (s.text + " " + s.heading).lower())) - stop
-            overlap = len(query_words & text_words)
-            if overlap > 0:
-                scored.append((overlap, s))
-        scored.sort(key=lambda x: -x[0])
-        return [s for _, s in scored[:top_k]]
+        """Return top-k sections semantically closest to query.
+
+        Uses sentence-transformers cosine similarity.  Falls back to keyword
+        overlap if the model is unavailable.
+        """
+        return self._semantic.search(query, top_k=top_k)
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
