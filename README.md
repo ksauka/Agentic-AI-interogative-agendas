@@ -147,6 +147,15 @@ Launch one assigned condition, for example:
 /home/kudzai/miniconda3/envs/esd_platform/bin/python -m streamlit run apps/app_01_lowE_lowA_noIA.py
 ```
 
+If you see repeated `ModuleNotFoundError: No module named 'torchvision'` coming
+from `streamlit/watcher` while importing `transformers`, disable file watching:
+
+```bash
+export STREAMLIT_SERVER_FILE_WATCHER_TYPE=none
+```
+
+This repo already sets `fileWatcherType = "none"` in `.streamlit/config.toml`.
+
 | App | Entry point | Condition |
 | --- | --- | --- |
 | 1 | `apps/app_01_lowE_lowA_noIA.py` | Low E, Low A, No IA |
