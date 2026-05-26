@@ -586,13 +586,12 @@ class RecommendationRenderer:
                 area_list = ", ".join(named)
                 opener = (
                     f"You asked me to focus on {area_list} — "
-                    "so I weighted the assessment around those areas. "
-                    "Here is what I found:\n\n"
+                    "so here is what I found on each of those. "
                 )
             else:
                 opener = (
-                    "You asked me to review the candidate with your notes in mind. "
-                    "Here is what I found:\n\n"
+                    "You asked me to review the candidate with your notes in mind — "
+                    "here is what I found. "
                 )
         else:
             if named:
@@ -709,6 +708,9 @@ class RecommendationRenderer:
                     "Final determination: recruiter discretion."
                 )
 
+        if condition.anthropomorphic_cues:
+            body = " ".join(blocks)
+            return opener + body + (" " + closer if body else closer)
         body = "\n\n".join(blocks)
         return opener + body + ("\n\n" + closer if body else closer)
 
