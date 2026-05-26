@@ -820,11 +820,14 @@ def _render_conversational_with_citations(
     logger: EventLogger,
     condition: Condition,
 ) -> None:
-    """Render recommendation text with citation chips immediately after each cited sentence.
+    """Render recommendation text with citation chips.
 
-    Splits at sentence boundaries. After each sentence that references a document
-    section, the corresponding chips appear directly below it — never as a
-    detached evidence list at the bottom of the message.
+    Single-paragraph text (high-A conversational): rendered as one unbroken
+    block with all chips shown as a compact row beneath — no mid-sentence
+    interruptions.
+
+    Multi-paragraph text (low-A report): chips appear below the paragraph
+    that contains their section reference.
     """
     if not chips:
         st.write(text)
@@ -833,43 +836,40 @@ def _render_conversational_with_citations(
     label_map = {s.section_label: s for s in chips}
     rendered_ids: set[str] = set()
 
-    # Split at sentence boundaries (. ! ? followed by space and capital letter)
-    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z])", text.strip())
+    # Single conversational paragraph — render whole, chips at end
+    if "\n\n" not in text.strip():
+        styled = _style_section_refs(text.strip(), label_map)
+        st.markdown(styled, unsafe_allow_html=True)
+        max_cols = min(len(chips), 4)
+        chip_cols = st.columns(max_cols)
+        for i, chip in enumerate(chips):
+            with chip_cols[i % max_cols]:
+                _render_chip(chip, state, logger, condition)
+        return
 
-    pending: list[str] = []
+    # Multi-paragraph report — chips below the paragraph that cites them
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
 
-    def _flush_pending() -> None:
-        if pending:
-            st.markdown(" ".join(pending))
-            pending.clear()
-
-    for sentence in sentences:
-        refs = list(dict.fromkeys(re.findall(r"Section\s+\d+\.\d+", sentence)))
-        sentence_chips = [
+    for para in paragraphs:
+        refs = list(dict.fromkeys(re.findall(r"Section\s+\d+\.\d+", para)))
+        para_chips = [
             label_map[r]
             for r in refs
             if r in label_map and label_map[r].evidence_id not in rendered_ids
         ]
 
-        if not sentence_chips:
-            pending.append(sentence)
-            continue
-
-        _flush_pending()
-
-        styled = _style_section_refs(sentence, label_map)
+        styled = _style_section_refs(para, label_map)
         st.markdown(styled, unsafe_allow_html=True)
 
-        max_cols = min(len(sentence_chips), 4)
-        chip_cols = st.columns(max_cols)
-        for i, chip in enumerate(sentence_chips):
-            with chip_cols[i % max_cols]:
-                _render_chip(chip, state, logger, condition)
-            rendered_ids.add(chip.evidence_id)
+        if para_chips:
+            max_cols = min(len(para_chips), 4)
+            chip_cols = st.columns(max_cols)
+            for i, chip in enumerate(para_chips):
+                with chip_cols[i % max_cols]:
+                    _render_chip(chip, state, logger, condition)
+                rendered_ids.add(chip.evidence_id)
 
-    _flush_pending()
-
-    # Overflow: chips not matched to any sentence (edge case)
+    # Overflow: chips not matched to any paragraph
     overflow = [c for c in chips if c.evidence_id not in rendered_ids]
     if overflow:
         max_ocols = min(len(overflow), 4)

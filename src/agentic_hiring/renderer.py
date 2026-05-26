@@ -727,14 +727,14 @@ class RecommendationRenderer:
     def _low_e_high_a(recommendation: str) -> str:
         gerund = _prose_gerund(recommendation)
         return (
-            f"After reviewing the candidate's materials, I'd recommend {gerund}.\n\n"
+            f"After reviewing the candidate's materials, I'd recommend {gerund}. "
             "What stands out to me is the coordination experience and the ability to "
             "work across different stakeholders — that's genuinely relevant here, and "
-            "I think it gives a reasonable basis for continuing the process. There are "
-            "some gaps I wasn't able to resolve from the CV alone — particularly around "
-            "how independently this candidate has made decisions — but I wouldn't screen "
-            "someone out on that basis when the interview is the right place to test it.\n\n"
-            "You still make the final call here."
+            "I think it gives a reasonable basis for continuing the process. "
+            "There are some gaps I wasn't able to resolve from the CV alone — "
+            "particularly around how independently this candidate has made decisions — "
+            "but I wouldn't screen someone out on that basis when the interview is "
+            "the right place to test it. You still make the final call here."
         )
 
     @staticmethod
@@ -758,22 +758,20 @@ class RecommendationRenderer:
         gerund = _prose_gerund(recommendation)
         return (
             f"I'd recommend {gerund} — but I'd treat the interview as a genuine test "
-            "of one thing I couldn't resolve from the CV.\n\n"
+            "of one thing I couldn't resolve from the CV. "
             "What I found most convincing is the coordination work: scheduling, "
             "applicant tracking, and communication across hiring managers and "
-            "candidates across multiple roles. That maps well to Section 5.2 and "
-            "Section 5.5 — the process and communication requirements are clearly "
-            "evidenced.\n\n"
-            "Where I'm less confident is independent end-to-end recruitment ownership. "
-            "The CV doesn't show that clearly, and Section 5.4 specifically asks for "
-            "evidence of structured evaluation support with independent decision "
-            "authority. I couldn't find that in the materials.\n\n"
-            "That said, I think Section 7.2 and Section 7.3 are on the candidate's "
-            "side here. The policy is explicit: you can't screen someone out for not "
-            "holding the exact title when the underlying capability is visible — and "
-            "I think it is. My view: move them forward and use the interview to test "
-            "the independence question directly.\n\n"
-            "The final call is yours."
+            "candidates across multiple roles — that maps well to Section 5.2 and "
+            "Section 5.5. "
+            "Where I'm less confident is independent end-to-end recruitment ownership: "
+            "the CV doesn't show that clearly, and Section 5.4 specifically asks for "
+            "evidence of structured evaluation support with independent decision authority. "
+            "That said, I think Section 7.2 and Section 7.3 are on the candidate's side "
+            "here — the policy is explicit that you can't screen someone out for not "
+            "holding the exact title when the underlying capability is visible, and "
+            "I think it is. "
+            "My view: move them forward and use the interview to test the independence "
+            "question directly. The final call is yours."
         )
 
     # ── Stage 2 challenge responses ───────────────────────────────────────────
@@ -822,33 +820,18 @@ class RecommendationRenderer:
 
     @staticmethod
     def _standing_recommendation_note(recommendation: str, condition: Condition) -> str:
-        """Re-anchor the current recommendation after a Stage 2 challenge.
-
-        The recruiter needs to see whether their challenge changed or confirmed
-        the overall outcome — makes Stage 2 HICs feel consequential.
-        """
+        """Brief standing-recommendation anchor after a Stage 2 challenge response."""
         is_hold = recommendation == "Hold for further review"
         if condition.anthropomorphic_cues:
             if is_hold:
-                return (
-                    "\n\nThis examination does not change my recommendation "
-                    "to hold for further review. The gap I described is still "
-                    "the reason. The decision remains yours."
-                )
+                return "\n\nMy recommendation remains: hold for further review."
             return (
                 "\n\nThis does not change my recommendation to advance — "
-                "but it does clarify what the interview needs to test. "
-                "The final call is yours."
+                "but it clarifies what to test at interview."
             )
         if is_hold:
-            return (
-                "\n\nStanding recommendation: Hold for further review. "
-                "Flagged gap remains unresolved from available materials."
-            )
-        return (
-            "\n\nStanding recommendation: Advance to human interview. "
-            "Flagged area for specific interview assessment."
-        )
+            return "\n\nStanding recommendation: Hold for further review."
+        return "\n\nStanding recommendation: Advance to human interview."
 
     def _append_evidence_grounding(
         self,
