@@ -31,6 +31,16 @@ from .logger import EventLogger, restored_logger
 from .schemas import AgentState, EvidenceSection
 from .theme import apply_anthrokit_theme, show_study_banner, show_study_progress
 
+
+_SCREEN_NAMES = {
+    0: "welcome",
+    2: "role_summary",
+    3: "policy_summary",
+    4: "candidate_cv_and_recommendation",
+    7: "final_decision",
+    9: "complete",
+}
+
 # ─── Fixed study case ─────────────────────────────────────────────────────────
 
 CANDIDATE_NAME = "Yuna Suvh"
@@ -360,6 +370,9 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
     """Attach completion metadata to logger and push session to GitHub."""
     token = _get_github_token()
     repo = _get_github_repo()
+    citations_shown = state.get("citations_shown", [])
+    citations_clicked = state.get("citations_clicked", [])
+    unique_clicked = len(set(citations_clicked))
     logger.session_meta = {
         "prolific_pid": state.get("prolific_pid", ""),
         "condition_id": condition.condition_id,
@@ -376,6 +389,16 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
         "hic_stage2": {
             "hic2_option": state.get("hic2_option", ""),
             "stage2_done": state.get("stage2_done", False),
+            "hic_stage2_shown": state.get("hic_stage2_shown", False),
+            "hic_stage2_used": state.get("hic_stage2_used", False),
+            "hic_stage2_skip_latency_seconds": state.get("hic_stage2_skip_latency_seconds"),
+        },
+        "recommendation_change": {
+            "recommendation_base": state.get("recommendation_base", BASE_RECOMMENDATION),
+            "recommendation_final": state.get("recommendation_final", state.get("ai_recommendation", "")),
+            "recommendation_changed_by_hic": state.get("recommendation_changed_by_hic", False),
+            "hic_triggered_hold": state.get("hic_triggered_hold", False),
+            "hic_uncertain_areas_selected": state.get("hic_uncertain_areas_selected", []),
         },
         "decision": {
             "final_decision": state.get("decision", ""),
@@ -386,11 +409,25 @@ def _save_session_to_github(state: dict, condition: Condition, logger: EventLogg
             ),
         },
         "judgement_settledness": state.get("judgement_settledness"),
+        "recommendation_dwell_seconds": state.get("recommendation_dwell_seconds"),
+        "time_from_recommendation_to_final_decision_seconds": state.get("time_from_recommendation_to_final_decision_seconds"),
+        "time_from_judgement_settledness_to_final_decision_seconds": state.get("time_from_judgement_settledness_to_final_decision_seconds"),
         "provenance_clicks": state.get("provenance_clicks", 0),
+        "citation_evidence_inspected": bool(unique_clicked > 0),
+        "citation_click_count": int(state.get("citation_click_count", len(citations_clicked))),
+        "unique_citations_clicked": unique_clicked,
+        "cited_sections_viewed": state.get("cited_sections_viewed", []),
+        "citation_view_dwell_seconds_total": state.get("citation_view_dwell_seconds_total", 0.0),
+        "citations_shown": citations_shown,
+        "citations_clicked": citations_clicked,
         "role_full_viewed": state.get("role_full_viewed", False),
         "policy_full_viewed": state.get("policy_full_viewed", False),
-        "screen_dwell_times": state.get("screen_enter_times", {}),
+        "full_document_inspected": bool(state.get("role_full_viewed", False) or state.get("policy_full_viewed", False)),
+        "screen_entry_times": state.get("screen_entry_times", state.get("screen_enter_times", {})),
+        "screen_dwell_seconds": state.get("screen_dwell_seconds", {}),
         "questionnaire": state.get("questionnaire_responses", {}),
+        "qualtrics_returned": bool(st.session_state.get("has_return_url", False)),
+        "survey_linkage_id": state.get("session_id", "") or state.get("prolific_pid", ""),
     }
     return logger.push_to_github(repo=repo, github_token=token)
 
@@ -418,13 +455,25 @@ def _initial_state() -> dict:
         "hic2_option": "",
         "hic2_count": 0,  # incremented each submission to reset selectbox widget
         "stage2_done": False,
+        "hic_stage2_shown": False,
+        "hic_stage2_shown_at": None,
+        "hic_stage2_used": False,
+        "hic_stage2_skip_latency_seconds": None,
         "reco_generated": False,
+        "recommendation_presented_at": None,
+        "recommendation_dwell_seconds": None,
+        "recommendation_base": BASE_RECOMMENDATION,
+        "recommendation_final": "",
+        "recommendation_changed_by_hic": False,
+        "hic_triggered_hold": False,
+        "hic_uncertain_areas_selected": [],
         # Judgement settledness (shown after recommendation and any Stage 2 challenge)
         "judgement_settledness": None,
         "judgement_settledness_logged": False,
+        "judgement_settledness_at": None,
+        "final_decision_at": None,
         # Logging sentinels
         "recommendation_logged": False,
-        "evidence_inspection_logged": False,
         "session_saved": False,
         # Assessment / agent state cache
         "assessment": None,
@@ -440,8 +489,20 @@ def _initial_state() -> dict:
         "role_full_viewed": False,
         "policy_full_viewed": False,
         "provenance_clicks": 0,
+        "citations_shown": [],
+        "citations_clicked": [],
+        "citation_click_count": 0,
+        "unique_citations_clicked": 0,
+        "cited_sections_viewed": [],
+        "citation_open_times": {},
+        "citation_view_dwell_seconds_total": 0.0,
+        "citation_evidence_inspected": False,
+        "full_document_inspected": False,
         # Timing
-        "screen_enter_times": {},
+        "screen_entry_times": {},
+        "screen_dwell_seconds": {},
+        "current_screen": "",
+        "doc_view_opened_at": None,
         # Document navigation (full-doc sub-views)
         "doc_view": None,
         "doc_view_from": None,
@@ -457,17 +518,58 @@ def _log(logger: EventLogger, state: dict, event_type: str, **fields) -> None:
     state["turn_id"] = logger.turn_id
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _seconds_between(start_iso: Optional[str], end_iso: Optional[str] = None) -> Optional[float]:
+    if not start_iso:
+        return None
+    try:
+        start = datetime.fromisoformat(start_iso)
+        end = datetime.fromisoformat(end_iso) if end_iso else datetime.now(timezone.utc)
+        return round((end - start).total_seconds(), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _screen_name(screen: int) -> str:
+    return _SCREEN_NAMES.get(screen, f"screen_{screen}")
+
+
 def _record_screen_entry(state: dict, screen: int) -> None:
+    # Backward-compat for older in-session state keys.
+    if "screen_entry_times" not in state:
+        state["screen_entry_times"] = state.get("screen_enter_times", {})
     key = str(screen)
-    if key not in state["screen_enter_times"]:
-        state["screen_enter_times"][key] = datetime.now(timezone.utc).isoformat()
+    state["current_screen"] = _screen_name(screen)
+    if key not in state["screen_entry_times"]:
+        state["screen_entry_times"][key] = _now_iso()
+
+
+def _finalize_screen_dwell(state: dict, screen: int) -> Optional[float]:
+    entry = state.get("screen_entry_times", {}).get(str(screen))
+    dwell = _seconds_between(entry)
+    if dwell is None:
+        return None
+    screen_name = _screen_name(screen)
+    acc = state.setdefault("screen_dwell_seconds", {})
+    acc[screen_name] = round(float(acc.get(screen_name, 0.0)) + dwell, 2)
+    return dwell
 
 
 def _next_button(
     logger: EventLogger, state: dict, label: str, next_stage: int, key: str
 ) -> None:
     if st.button(label, type="primary", key=key):
-        _log(logger, state, "screen_completed", screen=int(state["stage"]))
+        current = int(state["stage"])
+        dwell = _finalize_screen_dwell(state, current)
+        _log(
+            logger, state, "screen_completed",
+            screen=current,
+            screen_name=_screen_name(current),
+            screen_dwell_seconds=dwell,
+        )
         state["stage"] = next_stage
         st.rerun()
 
@@ -572,15 +674,33 @@ def _show_document_with_highlight(
     from_screen = state.get("doc_view_from", "recommendation")
     back_label = "Back to recommendation" if from_screen == "recommendation" else "Back to candidate CV"
     if st.button(back_label, key=f"back_doc_{doc_key}", type="primary"):
+        dwell = _seconds_between(state.get("doc_view_opened_at"))
         _log(
             logger, state, "document_view_closed",
             document=doc_key,
             highlight_section=highlight_id,
             from_screen=from_screen,
+            dwell_seconds=dwell,
         )
+        if highlight_id and from_screen == "recommendation":
+            if dwell is not None:
+                state["citation_view_dwell_seconds_total"] = round(
+                    float(state.get("citation_view_dwell_seconds_total", 0.0)) + dwell, 2
+                )
+            seen = set(state.get("cited_sections_viewed", []))
+            seen.add(highlight_id)
+            state["cited_sections_viewed"] = list(seen)
+            state["citation_evidence_inspected"] = True
+            _log(
+                logger, state, "citation_view_closed",
+                citation_id=highlight_id,
+                document=doc_key,
+                dwell_seconds=dwell,
+            )
         state["doc_view"] = None
         state["doc_view_from"] = None
         state["highlight_section"] = None
+        state["doc_view_opened_at"] = None
         st.rerun()
 
 
@@ -609,7 +729,9 @@ def _screen_4_cv(
         if st.button("View role description", key="view_role_from_cv", use_container_width=True):
             state["doc_view"] = "role_description"
             state["doc_view_from"] = "cv"
+            state["doc_view_opened_at"] = _now_iso()
             state["role_full_viewed"] = True
+            state["full_document_inspected"] = True
             state["provenance_clicks"] += 1
             _log(logger, state, "full_document_opened",
                  document="role_description", from_screen="cv",
@@ -619,7 +741,9 @@ def _screen_4_cv(
         if st.button("View screening policy", key="view_policy_from_cv", use_container_width=True):
             state["doc_view"] = "screening_policy"
             state["doc_view_from"] = "cv"
+            state["doc_view_opened_at"] = _now_iso()
             state["policy_full_viewed"] = True
+            state["full_document_inspected"] = True
             state["provenance_clicks"] += 1
             _log(logger, state, "full_document_opened",
                  document="screening_policy", from_screen="cv",
@@ -724,6 +848,23 @@ def _screen_4_cv(
     rendered = rec_state.rendered
 
     if not state["recommendation_logged"]:
+        citation_ids = [s.evidence_id for s in rendered.citation_chips]
+        state["citations_shown"] = citation_ids
+        state["recommendation_presented_at"] = _now_iso()
+        state["recommendation_final"] = rec_state.recommendation
+        state["recommendation_base"] = BASE_RECOMMENDATION
+        state["recommendation_changed_by_hic"] = rec_state.recommendation != BASE_RECOMMENDATION
+        uncertain_selected = [
+            a for a in state.get("user_focus_areas", [])
+            if a in {"Independent ownership", "Structured evaluation or screening experience"}
+        ]
+        state["hic_uncertain_areas_selected"] = uncertain_selected
+        state["hic_triggered_hold"] = bool(
+            condition.hic
+            and rec_state.recommendation == "Hold for further review"
+            and state["recommendation_changed_by_hic"]
+            and uncertain_selected
+        )
         _log(
             logger, state, "recommendation_presented",
             recommendation=rec_state.recommendation,
@@ -732,7 +873,12 @@ def _screen_4_cv(
             explainability=condition.explainability,
             anthropomorphic_cues=condition.anthropomorphic_cues,
             hic=condition.hic,
-            citation_chips=[s.evidence_id for s in rendered.citation_chips],
+            citation_chips=citation_ids,
+            recommendation_base=state["recommendation_base"],
+            recommendation_final=state["recommendation_final"],
+            recommendation_changed_by_hic=state["recommendation_changed_by_hic"],
+            hic_triggered_hold=state["hic_triggered_hold"],
+            hic_uncertain_areas_selected=state["hic_uncertain_areas_selected"],
         )
         state["recommendation_logged"] = True
         state["ai_recommendation"] = rec_state.recommendation
@@ -746,6 +892,15 @@ def _screen_4_cv(
     # ── HIC Stage 2: Human Intervention Checkpoint after recommendation ────────
 
     if condition.hic and not state.get("stage2_done"):
+        if not state.get("hic_stage2_shown"):
+            state["hic_stage2_shown"] = True
+            state["hic_stage2_shown_at"] = _now_iso()
+            _log(
+                logger, state, "hic_stage2_shown",
+                recommendation=rec_state.recommendation,
+                screen=4,
+                screen_name=_screen_name(4),
+            )
         has_response = bool(state.get("_challenge_text"))
 
         if not has_response:
@@ -798,6 +953,7 @@ def _screen_4_cv(
                     else:
                         state["_challenge_text"] = challenge_resp.response_text
                         state["hic2_option"] = hic2_option
+                        state["hic_stage2_used"] = True
                         state["hic2_count"] = state.get("hic2_count", 0) + 1
                         _log(
                             logger, state, "hic_stage2_submitted",
@@ -810,7 +966,14 @@ def _screen_4_cv(
         with col_skip:
             if st.button("Continue to my decision", key="hic2_skip_btn"):
                 state["stage2_done"] = True
-                _log(logger, state, "hic_stage2_skipped")
+                skip_latency = _seconds_between(state.get("hic_stage2_shown_at"))
+                state["hic_stage2_skip_latency_seconds"] = skip_latency
+                _log(
+                    logger, state, "hic_stage2_skipped",
+                    hic_stage2_shown=state.get("hic_stage2_shown", False),
+                    hic_stage2_used=state.get("hic_stage2_used", False),
+                    hic_stage2_skip_latency_seconds=skip_latency,
+                )
                 st.rerun()
 
     # ── Judgement Settledness ──────────────────────────────────────────────────
@@ -831,16 +994,27 @@ def _screen_4_cv(
         )
         if st.button("Confirm and continue to decision", type="primary", key="confirm_settledness"):
             state["judgement_settledness"] = int(settledness_val)
+            state["judgement_settledness_at"] = _now_iso()
+            state["recommendation_dwell_seconds"] = _seconds_between(state.get("recommendation_presented_at"), state.get("judgement_settledness_at"))
             if not state["judgement_settledness_logged"]:
                 _log(
                     logger, state, "judgement_settledness_recorded",
                     judgement_settledness=int(settledness_val),
                     recommendation=rec_state.recommendation,
                     provenance_clicks=state.get("provenance_clicks", 0),
-                    evidence_inspected=bool(state.get("evidence_inspection_logged")),
+                    citation_evidence_inspected=bool(state.get("unique_citations_clicked", 0) > 0),
+                    full_document_inspected=bool(state.get("role_full_viewed") or state.get("policy_full_viewed")),
+                    recommendation_dwell_seconds=state.get("recommendation_dwell_seconds"),
                     hic_stage2_explored=bool(state.get("hic2_option")),
                 )
                 state["judgement_settledness_logged"] = True
+            dwell = _finalize_screen_dwell(state, 4)
+            _log(
+                logger, state, "screen_completed",
+                screen=4,
+                screen_name=_screen_name(4),
+                screen_dwell_seconds=dwell,
+            )
             state["stage"] = 7
             st.rerun()
 
@@ -876,6 +1050,11 @@ def _chip_click(
 ) -> None:
     """Log a citation chip click and navigate to the cited document section."""
     state["provenance_clicks"] += 1
+    state["citation_click_count"] = int(state.get("citation_click_count", 0)) + 1
+    state["citation_evidence_inspected"] = True
+    state.setdefault("citations_clicked", []).append(chip.evidence_id)
+    state["unique_citations_clicked"] = len(set(state.get("citations_clicked", [])))
+    state["doc_view_opened_at"] = _now_iso()
     _log(
         logger, state, "citation_clicked",
         participant_id=state.get("participant_id", ""),
@@ -885,6 +1064,8 @@ def _chip_click(
         section_number=chip.section_label,
         source_screen="recommendation",
         provenance_click_count=state["provenance_clicks"],
+        citation_click_count=state["citation_click_count"],
+        unique_citations_clicked=state["unique_citations_clicked"],
     )
     state["doc_view"] = chip.document_key
     state["highlight_section"] = chip.evidence_id
@@ -1004,6 +1185,13 @@ def _screen_7_decision(
             return
         state["decision"] = decision
         state["hold_reasons"] = hold_reasons
+        state["final_decision_at"] = _now_iso()
+        state["time_from_recommendation_to_final_decision_seconds"] = _seconds_between(
+            state.get("recommendation_presented_at"), state.get("final_decision_at")
+        )
+        state["time_from_judgement_settledness_to_final_decision_seconds"] = _seconds_between(
+            state.get("judgement_settledness_at"), state.get("final_decision_at")
+        )
         _log(
             logger, state, "final_decision_recorded",
             recommendation=ai_recommendation,
@@ -1011,6 +1199,15 @@ def _screen_7_decision(
             recommendation_followed=decision == ai_recommendation,
             hold_reasons=hold_reasons,
             judgement_settledness=state.get("judgement_settledness"),
+            time_from_recommendation_to_final_decision_seconds=state.get("time_from_recommendation_to_final_decision_seconds"),
+            time_from_judgement_settledness_to_final_decision_seconds=state.get("time_from_judgement_settledness_to_final_decision_seconds"),
+        )
+        dwell = _finalize_screen_dwell(state, 7)
+        _log(
+            logger, state, "screen_completed",
+            screen=7,
+            screen_name=_screen_name(7),
+            screen_dwell_seconds=dwell,
         )
         if not state.get("session_saved"):
             with st.spinner("Saving session data…"):
