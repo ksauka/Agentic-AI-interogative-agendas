@@ -68,6 +68,37 @@ PRIORITY_STRENGTH: dict[str, str] = {
     "Growth potential": "conditional",
 }
 
+# Section IDs referenced in each priority's card text.
+# Used by the renderer to show contextually relevant citation chips
+# in E=1 steered conditions, instead of the fixed 5-chip default set.
+PRIORITY_CHIP_IDS: dict[str, list[str]] = {
+    "Independent ownership": [
+        "role_description_section_5_4",    # Structured Evaluation Support
+        "role_description_section_5_6",    # Independent Execution
+        "screening_policy_section_7_2",    # Transferable Evidence
+    ],
+    "Stakeholder communication": [
+        "role_description_section_5_3",    # Communication Capacity
+        "role_description_section_5_5",    # Stakeholder Management
+    ],
+    "Transferable experience": [
+        "screening_policy_section_7_2",    # Transferable Evidence
+        "screening_policy_section_7_3",    # No Exact-Match Rejection
+        "screening_policy_section_7_4",    # Adjacent Experience Rule
+    ],
+    "Structured evaluation or screening experience": [
+        "role_description_section_5_4",    # Structured Evaluation Support
+        "role_description_section_5_6",    # Independent Execution
+    ],
+    "Operational coordination": [
+        "role_description_section_5_2",    # Process Coordination
+        "role_description_section_5_3",    # Communication Capacity
+    ],
+    "Growth potential": [
+        "screening_policy_section_7_4",    # Adjacent Experience Rule
+    ],
+}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CARD: MAIN_RECOMMENDATION
@@ -546,10 +577,10 @@ _PRIORITY_EVIDENCE_DATA: dict[str, dict[str, str]] = {
             "work is structurally supported by the policy framework."
         ),
         "high_e_high_a": (
-            "On growth potential: Section 7.4  -  the Adjacent Experience Rule  -  is "
-            "relevant here. The policy supports candidates who have been building toward "
-            "the role rather than holding the exact title. The trajectory matters, "
-            "not just the current label."
+            "On growth potential: the candidate's trajectory is worth crediting here. "
+            "The policy explicitly supports this - the Adjacent Experience Rule "
+            "(Section 7.4) says that building toward the role matters, not just "
+            "holding the exact title at the moment. I think that applies directly."
         ),
         "low_e_low_a": (
             "On growth potential: the screening policy supports adjacent experience "

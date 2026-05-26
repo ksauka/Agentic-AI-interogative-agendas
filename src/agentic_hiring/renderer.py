@@ -36,6 +36,7 @@ from .anthrokit_prompts import (
     card_growth_potential,
     card_priority_evidence,
     PRIORITY_STRENGTH,
+    PRIORITY_CHIP_IDS,
     prose,
 )
 from .anthrokit_stylizer import generate_grounded_response, load_preset
@@ -54,11 +55,25 @@ class RecommendationRenderer:
         user_priorities: list[str],
         user_notes: str = "",
     ) -> RenderedResponse:
-        chips = (
-            self.retriever.retrieve_citation_chips()
-            if condition.explainability
-            else []
-        )
+        if condition.explainability:
+            has_steering = condition.hic and (user_priorities or user_notes.strip())
+            if has_steering:
+                # Chips are the sections actually cited in the steered text,
+                # not the fixed 5-chip default set which reflects the unsteered path.
+                named = [p for p in user_priorities if p != "Other concern"]
+                seen: set[str] = set()
+                chip_ids: list[str] = []
+                for priority in named:
+                    for eid in PRIORITY_CHIP_IDS.get(priority, []):
+                        if eid not in seen:
+                            chip_ids.append(eid)
+                            seen.add(eid)
+                chips = self.store.get_many(chip_ids)
+            else:
+                chips = self.retriever.retrieve_citation_chips()
+        else:
+            chips = []
+
         text = self._build_text(
             recommendation, evaluation, condition, user_priorities, user_notes
         )
@@ -184,8 +199,8 @@ class RecommendationRenderer:
             else:
                 closer = (
                     f"Based on those priorities, my recommendation is to {prose_rec}. "
-                    "You have seen what the evidence shows on the areas you care about. "
-                    "The decision is yours to make."
+                    "I think that's well-grounded given what you asked me to look at. "
+                    "The call is yours."
                 )
         else:
             if is_hold:
