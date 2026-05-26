@@ -92,7 +92,11 @@ class AgenticHiringDecisionAgent:
 
         retrieved = self._retriever.retrieve_for_plan(state.assessment_plan)
         evaluation = self._evaluator.evaluate(state.assessment_plan, retrieved)
-        recommendation = self._policy.recommend(evaluation, state.assessment_plan)
+        recommendation = self._policy.recommend(
+            evaluation,
+            state.assessment_plan,
+            hic_active=self.condition.hic,
+        )
         rendered = self._renderer.render(
             recommendation,
             evaluation,
@@ -118,10 +122,16 @@ class AgenticHiringDecisionAgent:
         """Generate a Stage 2 challenge response without changing recommendation."""
         query = custom_question if custom_question.strip() else challenge
         evidence = self._retriever.retrieve_for_challenge(query, top_k=5)
+        current_reco = (
+            state.recommendation_state.recommendation
+            if state.recommendation_state
+            else "Advance to human interview"
+        )
         response_text = self._renderer.render_challenge_response(
             challenge if challenge.lower() != "ask a custom question" else custom_question,
             evidence,
             self.condition,
+            current_recommendation=current_reco,
         )
         result = ChallengeResponse(
             challenge=challenge,

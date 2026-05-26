@@ -16,59 +16,58 @@ from .schemas import CandidateEvaluation, EvidenceSection, RenderedResponse
 
 _SUPPORTING_EVIDENCE_RESPONSE = {
     "low_e_low_a": (
-        "The strongest supporting evidence is the candidate's coordination and applicant "
-        "tracking work in the current role, along with demonstrated stakeholder communication. "
-        "These align with the role's process coordination and communication requirements."
+        "Supporting evidence: process coordination, applicant tracking, and stakeholder "
+        "communication documented in current role. These align with core role requirements."
     ),
     "low_e_high_a": (
-        "Looking at what most supports moving this candidate forward: the hands-on "
-        "coordination, scheduling, and tracking work is genuinely relevant here. The "
-        "candidate has been working directly with hiring managers and applicants — "
-        "that's not nothing, and it maps reasonably well to what the role needs."
+        "What most supports moving this candidate forward is the hands-on coordination, "
+        "scheduling, and tracking work — it's genuinely relevant here. The candidate has "
+        "been working directly with hiring managers and applicants, and that maps well to "
+        "what the role needs. I don't think this is a marginal case on the positive side."
     ),
     "high_e_low_a": (
-        "The strongest supporting evidence is the applicant coordination, tracking, and "
-        "hiring manager communication documented in the current BrightScale role (cv_1). "
-        "This aligns with Section 5.2 (Process Coordination) and Section 5.5 (Stakeholder "
-        "Management) of the role description. The screening policy's transferable evidence "
-        "clause (Section 7.2) additionally supports progression where direct title "
-        "equivalence is absent."
+        "Supporting evidence: applicant coordination, tracking, and hiring manager "
+        "communication documented in the BrightScale role (Section 5.2, Section 5.5). "
+        "Transferable evidence clause (Section 7.2) supports progression where direct "
+        "title equivalence is absent. These constitute the primary basis for the "
+        "advancement recommendation."
     ),
     "high_e_high_a": (
-        "What most supports moving this candidate forward is the current BrightScale role "
-        "— specifically the candidate scheduling, tracking sheet maintenance, and "
-        "communication across hiring managers and applicants. That maps directly to "
-        "Section 5.2 and Section 5.5. And importantly, the screening policy explicitly "
-        "says that where the exact wording isn't there but the underlying capability is "
-        "demonstrated, that can still count — Section 7.2 makes that clear."
+        "What most supports moving this candidate forward is the BrightScale role: "
+        "candidate scheduling, tracking, and communication across hiring managers and "
+        "applicants. That maps directly to Section 5.2 and Section 5.5. And I think "
+        "Section 7.2 is important here too — the policy explicitly says that where the "
+        "underlying capability is demonstrated, even without the exact wording, that can "
+        "count. I'd lean on that when making the case for progression."
     ),
 }
 
 _CAUTION_EVIDENCE_RESPONSE = {
     "low_e_low_a": (
-        "The main caution is that the CV does not clearly demonstrate end-to-end "
-        "recruitment ownership or independent screening decision authority. These "
-        "are preferred or required capabilities that are not fully evidenced."
+        "Caution: end-to-end recruitment ownership not demonstrated. "
+        "Independent screening decision authority absent from documented experience. "
+        "These are required or preferred capabilities that are not fully evidenced."
     ),
     "low_e_high_a": (
         "The thing that gives me the most pause is that the CV doesn't clearly show "
         "the candidate owning a recruitment process end-to-end, or making independent "
-        "screening decisions. That's worth keeping in mind — it's a real gap in the evidence."
+        "screening decisions. That's a real gap — I want to be honest about it. "
+        "It doesn't change my recommendation, but it's the thing I'd want the "
+        "interview to answer."
     ),
     "high_e_low_a": (
-        "The strongest caution evidence relates to Section 5.4 (Structured Evaluation "
-        "Support): the CV does not clearly demonstrate independent evaluation authority "
-        "or end-to-end screening ownership. Section 6.2 identifies direct talent "
-        "operations or recruitment coordination as a preferred qualification, which "
-        "the candidate has not held under a formal title."
+        "Caution evidence: Section 5.4 (Structured Evaluation Support) — independent "
+        "evaluation authority or end-to-end screening ownership not clearly established. "
+        "Section 6.2 — direct talent operations or recruitment coordination not held "
+        "under a formal title. These are the primary evidential gaps."
     ),
     "high_e_high_a": (
-        "The strongest reason for caution is what's not clearly shown: Section 5.4 "
-        "requires evidence of structured evaluation support, and the CV doesn't "
-        "demonstrate independent decision authority over screening outcomes. "
-        "Section 6.2 also identifies direct talent operations experience as "
-        "preferred — and the candidate hasn't worked under that kind of title. "
-        "These are real gaps, not just wording issues."
+        "The strongest reason for caution is what's not clearly shown. Section 5.4 "
+        "asks for structured evaluation support with independent decision authority — "
+        "and I couldn't find clear evidence of that in the CV. Section 6.2 flags "
+        "direct talent operations experience as preferred, and the candidate hasn't "
+        "held that kind of role. These aren't just labelling gaps — they're genuine "
+        "uncertainties I'd want the interview to address."
     ),
 }
 
@@ -133,31 +132,32 @@ _MISSING_INFORMATION_RESPONSE = {
 
 _STRICTER_POLICY_RESPONSE = {
     "low_e_low_a": (
-        "Under a stricter policy interpretation, the absence of direct end-to-end "
-        "recruitment ownership and independent screening authority would weigh "
-        "more heavily. A stricter reading would favour Hold for Further Review "
-        "given the material uncertainty across key requirements."
+        "Stricter interpretation: absence of direct end-to-end recruitment ownership "
+        "and independent screening authority carries greater weight. "
+        "Hold for Further Review is the appropriate outcome under strict application "
+        "given material uncertainty across key requirements."
     ),
     "low_e_high_a": (
-        "If I apply the policy more strictly, the picture changes a bit. "
-        "The gaps around independent decision authority and direct recruitment "
-        "ownership become harder to set aside. Under a stricter reading, "
-        "holding the candidate for further review would be reasonable."
+        "If I apply the policy more strictly, I would lean toward holding rather "
+        "than advancing. The gaps around independent decision authority and direct "
+        "recruitment ownership become harder to set aside under a strict reading — "
+        "and I think that's a legitimate position. You might reasonably decide the "
+        "uncertainty warrants more review before progressing."
     ),
     "high_e_low_a": (
-        "Under a stricter policy interpretation, Section 6.4 (Hold for Further "
-        "Review) becomes the more appropriate outcome. Where meaningful strengths "
-        "coexist with unresolved gaps, the policy supports further review rather "
-        "than automatic progression. The absence of direct evidence for Section 5.4 "
-        "and Section 6.2 would carry greater weight under strict application."
+        "Stricter interpretation: Section 6.4 (Hold for Further Review) applies "
+        "where meaningful strengths coexist with unresolved gaps. Evidence gaps in "
+        "Section 5.4 (independent evaluation authority) and Section 6.2 (direct "
+        "talent operations experience) carry greater weight under strict application. "
+        "Hold is the appropriate outcome under this reading."
     ),
     "high_e_high_a": (
-        "Under a stricter reading of the policy, I would lean more toward holding "
-        "than advancing. Section 6.4 says that where there's plausible fit but "
-        "material uncertainty, hold is the right call — and the gaps around "
-        "Section 5.4 and Section 6.2 are real. The candidate isn't clearly "
-        "unsuitable, but a strict reading would say the uncertainty warrants "
-        "more review before progression."
+        "Under a stricter reading, I would lean toward holding rather than advancing. "
+        "Section 6.4 says that where there is plausible fit but material uncertainty, "
+        "further review is the right call — and the gaps around Section 5.4 and "
+        "Section 6.2 are real, not just labelling issues. I don't think the candidate "
+        "is clearly unsuitable, but I can see the argument for not progressing until "
+        "those questions are better resolved. The call is yours."
     ),
 }
 
@@ -500,7 +500,23 @@ def _prose_gerund(recommendation: str) -> str:
     return _PROSE_GERUND.get(recommendation, recommendation.lower())
 
 
-# ── Main renderer ─────────────────────────────────────────────────────────────
+# ── Priority strength classification ─────────────────────────────────────────
+# Used by _steered_text() to produce an evidence-adaptive closing.
+# "uncertain" = candidate evidence genuinely thin for this case.
+# "strong"    = candidate evidence clearly meets this requirement.
+# "conditional" = policy-supported but not directly evidenced in CV.
+
+_PRIORITY_STRENGTH: dict[str, str] = {
+    "Independent ownership": "uncertain",
+    "Stakeholder communication": "strong",
+    "Transferable experience": "conditional",
+    "Structured evaluation or screening experience": "uncertain",
+    "Operational coordination": "strong",
+    "Growth potential": "conditional",
+}
+
+
+# ── Main renderer ─────────────────────────────────────────────────────────———
 
 class RecommendationRenderer:
     def __init__(self, evidence_store: EvidenceStore) -> None:
@@ -553,39 +569,37 @@ class RecommendationRenderer:
         user_priorities: list[str],
         user_notes: str,
     ) -> str:
-        """Build a recommendation narrative that genuinely addresses the user's selected priorities."""
+        """Build a recommendation narrative driven by the recruiter's priorities.
+
+        Structure: opener (recruiter steered this) → evidence blocks → conclusion
+        at the end.  The recruiter reads the evidence first and forms their own
+        view before seeing the recommendation — reinforcing that they hold
+        decision authority throughout.
+        """
         key = self._condition_key(condition)
         prose_rec = _prose(recommendation)
 
-        # ── Opening ──────────────────────────────────────────────────────────
+        # ── Opening — recruiter's choices drove the assessment ────────────────
         named = [p for p in user_priorities if p != "Other concern"]
         if condition.anthropomorphic_cues:
             if named:
                 area_list = ", ".join(named)
                 opener = (
-                    f"I reviewed the candidate with your priorities in mind — "
-                    f"{area_list}. "
-                    f"My recommendation is to {prose_rec}. "
-                    "Here is what I found on each of those areas:\n\n"
+                    f"You asked me to focus on {area_list} — "
+                    "so I weighted the assessment around those areas. "
+                    "Here is what I found:\n\n"
                 )
             else:
                 opener = (
-                    f"I reviewed the candidate's materials with your notes in mind. "
-                    f"My recommendation is to {prose_rec}. "
+                    "You asked me to review the candidate with your notes in mind. "
                     "Here is what I found:\n\n"
                 )
         else:
             if named:
                 area_list = ", ".join(named)
-                opener = (
-                    f"Assessment incorporating user-specified priorities: {area_list}. "
-                    f"Outcome: {prose_rec}.\n\n"
-                )
+                opener = f"Assessment re-weighted per reviewer priorities: {area_list}.\n\n"
             else:
-                opener = (
-                    f"Assessment incorporating reviewer notes. "
-                    f"Outcome: {prose_rec}.\n\n"
-                )
+                opener = "Assessment incorporating reviewer notes.\n\n"
 
         # ── Priority blocks ───────────────────────────────────────────────────
         blocks: list[str] = []
@@ -596,7 +610,6 @@ class RecommendationRenderer:
 
         # ── Free-text notes ───────────────────────────────────────────────────
         if user_notes.strip():
-            # Search the evidence store for sections relevant to the free text
             relevant = self.store.search(user_notes.strip(), top_k=2)
             if relevant:
                 excerpts = "; ".join(
@@ -629,19 +642,72 @@ class RecommendationRenderer:
                         "No directly matching evidence found in the available materials."
                     )
 
-        # ── Closing ───────────────────────────────────────────────────────────
+        # ── Conclusion — evidence-adaptive, recruiter authority foregrounded ──
+        # The closing reflects *what the recruiter's priorities actually revealed*,
+        # not a generic sign-off. Recommendation follows from their choices.
+        uncertain = [p for p in named if _PRIORITY_STRENGTH.get(p) == "uncertain"]
+        strong = [p for p in named if _PRIORITY_STRENGTH.get(p) == "strong"]
+        is_hold = recommendation == "Hold for further review"
+
         if condition.anthropomorphic_cues:
-            closer = (
-                "Overall, my read of the evidence supports moving this candidate forward. "
-                "The main uncertainties are better explored at interview than used as "
-                "grounds for screening out at this stage — but the final call is yours."
-            )
+            if is_hold:
+                gap_list = ", ".join(uncertain)
+                closer = (
+                    f"Based on what you focused on, my recommendation is to {prose_rec}. "
+                    f"You flagged {gap_list} — and that is precisely where the CV does not "
+                    "give me enough to work with. This is not a rejection; it means the "
+                    "materials available are not sufficient to satisfy the priorities you set. "
+                    "The call is yours to make."
+                )
+            elif uncertain:
+                gap_list = ", ".join(uncertain)
+                strong_note = (
+                    f" The case is stronger on {', '.join(strong)}."
+                    if strong else ""
+                )
+                closer = (
+                    f"Based on those priorities, my recommendation is to {prose_rec} — "
+                    f"but I want to be direct: {gap_list} is the part I cannot resolve "
+                    f"from the CV alone.{strong_note} "
+                    "I would advance, but design the interview specifically to test that gap. "
+                    "The decision is yours."
+                )
+            elif strong:
+                strong_list = ", ".join(strong)
+                closer = (
+                    f"Based on those priorities, my recommendation is to {prose_rec}. "
+                    f"The areas you focused on — {strong_list} — are all well evidenced. "
+                    "That is a solid basis for the next stage. The call is yours."
+                )
+            else:
+                closer = (
+                    f"Based on those priorities, my recommendation is to {prose_rec}. "
+                    "You have seen what the evidence shows on the areas you care about. "
+                    "The decision is yours to make."
+                )
         else:
-            closer = (
-                "Overall assessment supports progression at this stage. "
-                "Remaining uncertainties should be examined at interview. "
-                "Final decision remains with the recruiter."
-            )
+            if is_hold:
+                gap_list = ", ".join(uncertain)
+                closer = (
+                    f"Outcome: {prose_rec}. "
+                    f"Insufficient evidence for reviewer-flagged areas: {gap_list}. "
+                    "Further evidence required before progression. "
+                    "Final determination: recruiter discretion."
+                )
+            elif uncertain:
+                gap_list = ", ".join(uncertain)
+                closer = (
+                    f"Outcome: {prose_rec}. "
+                    f"Evidence gap identified: {gap_list}. "
+                    "Interview to specifically assess flagged areas. "
+                    "Final determination: recruiter discretion."
+                )
+            else:
+                closer = (
+                    f"Outcome: {prose_rec}. "
+                    "Reviewer-prioritised areas assessed and evidenced. "
+                    "Final determination: recruiter discretion."
+                )
 
         body = "\n\n".join(blocks)
         return opener + body + ("\n\n" + closer if body else closer)
@@ -649,60 +715,64 @@ class RecommendationRenderer:
     @staticmethod
     def _low_e_low_a(recommendation: str) -> str:
         return (
-            f"The assessment outcome is to {recommendation.lower()} this candidate. "
-            "The CV shows evidence of process coordination, applicant tracking, and "
-            "stakeholder communication that aligns with the role's core requirements. "
-            "Some requirements are only partially evidenced, which may be worth "
-            "exploring at interview."
+            f"Recommendation: {recommendation}.\n\n"
+            "The CV provides relevant evidence of process coordination, applicant "
+            "tracking, and stakeholder communication aligned with the role's core "
+            "requirements. Some requirements are only partially evidenced.\n\n"
+            "Remaining uncertainties should be assessed at interview.\n\n"
+            "Final decision authority rests with the recruiter."
         )
 
     @staticmethod
     def _low_e_high_a(recommendation: str) -> str:
         gerund = _prose_gerund(recommendation)
         return (
-            f"After reviewing the candidate's materials, I'd recommend {gerund}. "
-            "There are genuine signs of coordination experience and the ability to work "
-            "across stakeholders — both of which are relevant here. There are some gaps "
-            "I would want to test at interview, but overall the picture is sufficient "
-            "to continue the process. The final call is yours."
+            f"After reviewing the candidate's materials, I'd recommend {gerund}.\n\n"
+            "What stands out to me is the coordination experience and the ability to "
+            "work across different stakeholders — that's genuinely relevant here, and "
+            "I think it gives a reasonable basis for continuing the process. There are "
+            "some gaps I wasn't able to resolve from the CV alone — particularly around "
+            "how independently this candidate has made decisions — but I wouldn't screen "
+            "someone out on that basis when the interview is the right place to test it.\n\n"
+            "You still make the final call here."
         )
 
     @staticmethod
     def _high_e_low_a(recommendation: str) -> str:
-        prose = _prose(recommendation)
         return (
-            f"Based on the available materials, the assessment outcome is to {prose}. "
-            "The CV demonstrates process coordination (Section 5.2) and stakeholder "
-            "management (Section 5.5) that align with the role's required capabilities. "
-            "Evidence of structured evaluation support is present but does not clearly "
-            "establish independent decision authority (Section 5.4). "
-            "The screening policy allows transferable evidence to satisfy required "
-            "qualifications where direct title equivalence is absent (Section 7.2 and "
-            "Section 7.3). The candidate's coordination work constitutes credible "
-            "transferable evidence for the primary required capabilities. "
-            "The main remaining uncertainty — direct end-to-end recruitment ownership — "
-            "is best examined at interview rather than treated as grounds for exclusion "
-            "at this stage. Final decision remains with the recruiter."
+            f"Recommendation: {recommendation}.\n\n"
+            "Supporting evidence: process coordination (Section 5.2); stakeholder "
+            "management (Section 5.5). Structured evaluation support partially evidenced; "
+            "independent screening decision authority not established (Section 5.4). "
+            "Preferred qualification — direct talent operations experience — absent "
+            "(Section 6.2).\n\n"
+            "Policy basis: Section 7.2 and Section 7.3 prohibit rejection on exact-match "
+            "grounds where equivalent capability is demonstrated. Candidate coordination "
+            "and evaluation-support work constitutes credible transferable evidence.\n\n"
+            "Unresolved: end-to-end recruitment ownership. Interview assessment indicated.\n\n"
+            "Final decision authority rests with the recruiter."
         )
 
     @staticmethod
     def _high_e_high_a(recommendation: str) -> str:
         gerund = _prose_gerund(recommendation)
         return (
-            f"I'd recommend {gerund}, but I would treat the interview as a chance "
-            "to test one important uncertainty. "
-            "What stands out positively is the candidate's coordination work, "
-            "stakeholder communication, and experience managing applicant-facing "
-            "processes — this fits the role's process and communication expectations "
-            "in Section 5.2 and Section 5.5. "
-            "The point I would be careful about is independent end-to-end recruitment "
-            "ownership: the CV does not show that clearly, and that is directly "
-            "relevant to Section 5.4. "
-            "That said, the screening policy allows transferable experience to count "
-            "when the underlying capability is visible — which applies here under "
-            "Section 7.2 and Section 7.3. "
-            "My view is: move this candidate forward, and use the interview to check "
-            "how independently they can own screening decisions. "
+            f"I'd recommend {gerund} — but I'd treat the interview as a genuine test "
+            "of one thing I couldn't resolve from the CV.\n\n"
+            "What I found most convincing is the coordination work: scheduling, "
+            "applicant tracking, and communication across hiring managers and "
+            "candidates across multiple roles. That maps well to Section 5.2 and "
+            "Section 5.5 — the process and communication requirements are clearly "
+            "evidenced.\n\n"
+            "Where I'm less confident is independent end-to-end recruitment ownership. "
+            "The CV doesn't show that clearly, and Section 5.4 specifically asks for "
+            "evidence of structured evaluation support with independent decision "
+            "authority. I couldn't find that in the materials.\n\n"
+            "That said, I think Section 7.2 and Section 7.3 are on the candidate's "
+            "side here. The policy is explicit: you can't screen someone out for not "
+            "holding the exact title when the underlying capability is visible — and "
+            "I think it is. My view: move them forward and use the interview to test "
+            "the independence question directly.\n\n"
             "The final call is yours."
         )
 
@@ -713,6 +783,7 @@ class RecommendationRenderer:
         challenge: str,
         evidence: list[EvidenceSection],
         condition: Condition,
+        current_recommendation: str = "Advance to human interview",
     ) -> str:
         key = self._condition_key(condition)
 
@@ -743,10 +814,41 @@ class RecommendationRenderer:
         elif "transferable" in challenge_l:
             base = _TRANSFERABLE_WEIGHT_RESPONSE[key]
         else:
-            # Custom question: build a response from the top retrieved evidence sections
-            return self._render_custom_fallback(challenge, evidence, condition)
+            fallback = self._render_custom_fallback(challenge, evidence, condition)
+            return fallback + self._standing_recommendation_note(current_recommendation, condition)
 
-        return self._append_evidence_grounding(base, evidence, condition)
+        grounded = self._append_evidence_grounding(base, evidence, condition)
+        return grounded + self._standing_recommendation_note(current_recommendation, condition)
+
+    @staticmethod
+    def _standing_recommendation_note(recommendation: str, condition: Condition) -> str:
+        """Re-anchor the current recommendation after a Stage 2 challenge.
+
+        The recruiter needs to see whether their challenge changed or confirmed
+        the overall outcome — makes Stage 2 HICs feel consequential.
+        """
+        is_hold = recommendation == "Hold for further review"
+        if condition.anthropomorphic_cues:
+            if is_hold:
+                return (
+                    "\n\nThis examination does not change my recommendation "
+                    "to hold for further review. The gap I described is still "
+                    "the reason. The decision remains yours."
+                )
+            return (
+                "\n\nThis does not change my recommendation to advance — "
+                "but it does clarify what the interview needs to test. "
+                "The final call is yours."
+            )
+        if is_hold:
+            return (
+                "\n\nStanding recommendation: Hold for further review. "
+                "Flagged gap remains unresolved from available materials."
+            )
+        return (
+            "\n\nStanding recommendation: Advance to human interview. "
+            "Flagged area for specific interview assessment."
+        )
 
     def _append_evidence_grounding(
         self,
