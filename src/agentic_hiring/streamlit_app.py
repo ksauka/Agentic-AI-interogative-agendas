@@ -797,7 +797,7 @@ def _screen_4_cv(
             else "Generate recommendation"
         )
         if st.button(btn_label, type="primary", key="generate_reco_btn"):
-            cv_enter_iso = state["screen_enter_times"].get("4")
+            cv_enter_iso = state.get("screen_entry_times", {}).get("4")
             cv_dwell_seconds: int | None = None
             if cv_enter_iso:
                 try:
