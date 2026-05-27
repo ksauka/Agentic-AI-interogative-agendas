@@ -47,45 +47,54 @@ CANDIDATE_NAME = "Yuna Suvh"
 
 CV_MARKDOWN = """\
 # Yuna Suvh
-**People and Operations Coordinator**  
+**People and Operations Coordinator**
 Amsterdam, Netherlands · y.suvh@example.com
 
 ---
 
 ## Professional Summary
 
-Operations and coordination professional with experience supporting cross-functional
-teams in fast-moving business environments. Works across talent coordination, internal
-process follow-up, stakeholder communication, and structured documentation.
-Comfortable handling multiple priorities, improving workflow clarity, and supporting
-hiring-related activities, though not always under formal recruitment role titles.
+Operations and coordination professional with experience supporting people-related
+workflows in fast-moving business environments. Has worked on candidate scheduling,
+hiring follow-ups, onboarding preparation, stakeholder communication, and internal
+process tracking. Comfortable maintaining structured records and supporting hiring
+managers, but has not held independent ownership of recruitment screening decisions,
+strategic talent planning, or final candidate evaluation.
 
 ---
 
 ## Work Experience
 
-### People and Operations Coordinator  -  BrightScale Commerce
+### People and Operations Coordinator  -  Saukala Global
 *March 2022 – present · Amsterdam, Netherlands*
 
-- Coordinated candidate scheduling, hiring follow-ups, and communication between
-  hiring managers and applicants across multiple open roles
-- Maintained internal tracking sheets for candidate progress and interview stages;
-  flagged gaps and delays to line managers
-- Supported preparation of structured interview packs and evaluation notes; did not
-  hold independent decision authority over outcomes
-- Improved internal follow-up process for open roles, reducing missed communication
-  steps
-- Worked with leadership and team leads on onboarding preparation and role handover
+- Coordinated candidate scheduling, interview follow-ups, and communication between
+  hiring managers and applicants across several open roles
+- Maintained internal tracking sheets for candidate progress, interview stages,
+  missing feedback, and follow-up actions
+- Supported preparation of structured interview packs, role handover notes, and
+  evaluation templates for hiring managers
+- Flagged incomplete candidate information and delayed feedback to line managers,
+  but did not independently assess candidate suitability or make screening
+  recommendations
+- Assisted with onboarding preparation after hiring decisions had already been made
+- Improved internal follow-up processes for open roles by reducing missed
+  communication steps and clarifying who needed to respond at each stage
+- Worked mainly in an operational support role rather than a formal recruiter,
+  talent partner, or strategic hiring role
 
-### Project and Client Support Associate  -  Nexa Solutions
+### Project and Client Support Associate  -  Suvion Digital
 *July 2019 – February 2022 · Rotterdam, Netherlands*
 
 - Managed communication across client, operations, and delivery teams in a growing SME
 - Tracked project stages, deadlines, and action items using structured internal
   workflows
-- Prepared meeting summaries, follow-up records, and stakeholder updates
-- Assisted with shortlisting external contractors for project support roles; was not
-  the final decision-maker on these engagements
+- Prepared meeting summaries, follow-up records, and stakeholder updates for
+  project leads
+- Assisted with shortlisting external contractors for project support roles by
+  checking availability, basic requirements, and documentation completeness
+- Did not make final contractor selection decisions and did not own structured
+  candidate evaluation
 
 ---
 
@@ -99,7 +108,8 @@ hiring-related activities, though not always under formal recruitment role title
 
 Stakeholder coordination · Workflow documentation · Process tracking ·
 Cross-functional communication · Scheduling and follow-up · Operational support ·
-Onboarding preparation · Spreadsheet tracking · Basic ATS exposure
+Onboarding preparation · Spreadsheet tracking · Basic ATS exposure ·
+Candidate communication support · Interview coordination support
 
 ---
 """

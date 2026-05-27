@@ -114,7 +114,8 @@ def card_main_recommendation(high_e: bool, high_a: bool, recommendation: str) ->
             f"Recommendation: {recommendation}.\n\n"
             "The CV provides relevant evidence of process coordination, applicant "
             "tracking, and stakeholder communication aligned with the role's core "
-            "requirements. Some requirements are only partially evidenced.\n\n"
+            "requirements. Independent screening decision authority is not evidenced "
+            "in documented roles.\n\n"
             "Remaining uncertainties should be assessed at interview.\n\n"
             "Final decision authority rests with the recruiter."
         )
@@ -122,46 +123,53 @@ def card_main_recommendation(high_e: bool, high_a: bool, recommendation: str) ->
     if not high_e and high_a:
         return (
             f"After reviewing the candidate's materials, I'd recommend {gerund}. "
-            "What stands out to me is the coordination experience and the ability to "
-            "work across different stakeholders  -  that's genuinely relevant here, and "
-            "I think it gives a reasonable basis for continuing the process. "
-            "There are some gaps I wasn't able to resolve from the CV alone  -  "
-            "particularly around how independently this candidate has made decisions  -  "
-            "but I wouldn't screen someone out on that basis when the interview is "
-            "the right place to test it. You still make the final call here."
+            "What I find most relevant is the coordination and communication work  -  "
+            "scheduling, tracking, and working directly with hiring managers and "
+            "applicants at Saukala Global. That's genuinely aligned with what this "
+            "role needs. "
+            "There's a clear gap I want to be honest about: the CV is explicit that "
+            "the candidate didn't hold independent screening responsibility. "
+            "I don't think that's a reason to screen them out at this stage  -  "
+            "the interview is the right place to examine that directly. "
+            "You still make the final call."
         )
 
     if high_e and not high_a:
         return (
             f"Recommendation: {recommendation}.\n\n"
-            "Supporting evidence: process coordination (Section 5.2); stakeholder "
-            "management (Section 5.5). Structured evaluation support partially evidenced; "
-            "independent screening decision authority not established (Section 5.4). "
-            "Preferred qualification  -  direct talent operations experience  -  absent "
-            "(Section 6.2).\n\n"
-            "Policy basis: Section 7.2 and Section 7.3 prohibit rejection on exact-match "
-            "grounds where equivalent capability is demonstrated. Candidate coordination "
-            "and evaluation-support work constitutes credible transferable evidence.\n\n"
-            "Unresolved: end-to-end recruitment ownership. Interview assessment indicated.\n\n"
+            "Supporting evidence: process coordination and interview pack preparation "
+            "(Section 5.2); cross-stakeholder communication across hiring managers and "
+            "applicants at Saukala Global (Section 5.5). Tracking and follow-up "
+            "processes documented across concurrent hiring cycles.\n\n"
+            "Key gap: CV explicitly states the candidate did not independently assess "
+            "candidate suitability or make screening recommendations. Section 5.4 "
+            "(Structured Evaluation Support) requires independent evaluation authority  -  "
+            "this requirement is not met. Section 6.2 preferred qualification "
+            "(direct talent operations) also absent.\n\n"
+            "Policy basis: Sections 7.2 and 7.3 permit progression where equivalent "
+            "capability is demonstrated through adjacent experience. Candidate "
+            "coordination and evaluation-support work constitutes credible transferable "
+            "evidence. Section 8.5 supports interview-stage resolution of residual "
+            "uncertainty.\n\n"
             "Final decision authority rests with the recruiter."
         )
 
     # high_e and high_a
     return (
-        f"I'd recommend {gerund}  -  but I'd treat the interview as a genuine test "
-        "of one thing I couldn't resolve from the CV. "
-        "What I found most convincing is the coordination work: scheduling, "
-        "applicant tracking, and communication across hiring managers and "
-        "candidates across multiple roles  -  that maps well to Section 5.2 and "
-        "Section 5.5. "
-        "Where I'm less confident is independent end-to-end recruitment ownership: "
-        "the CV doesn't show that clearly, and Section 5.4 specifically asks for "
-        "evidence of structured evaluation support with independent decision authority. "
-        "That said, I think Section 7.2 and Section 7.3 are on the candidate's side "
-        "here  -  the policy is explicit that you can't screen someone out for not "
-        "holding the exact title when the underlying capability is visible, and "
-        "I think it is. "
-        "My view: move them forward and use the interview to test the independence "
+        f"I'd recommend {gerund}. "
+        "The coordination work at Saukala Global is the strongest part of the "
+        "profile: scheduling, applicant tracking, interview pack preparation, and "
+        "cross-stakeholder communication across concurrent hiring processes  -  "
+        "that maps directly to Section 5.2 and Section 5.5. "
+        "Where the CV is less convincing  -  and I want to be direct here  -  "
+        "is independent screening ownership. The CV notes that the candidate "
+        "did not independently assess candidate suitability or make screening "
+        "recommendations, and Section 5.4 specifically asks for structured "
+        "evaluation authority. That is a real gap. "
+        "My view is that Section 7.2 and Section 7.3 still support progression: "
+        "the policy is clear that equivalent capability shown through adjacent work "
+        "can satisfy the requirement, and the coordination evidence here is substantial. "
+        "I would advance and use the interview to test the independent judgement "
         "question directly. The final call is yours."
     )
 
@@ -188,13 +196,13 @@ def card_support_evidence(high_e: bool, high_a: bool) -> str:
     if high_e and not high_a:
         return (
             "Supporting evidence: applicant coordination, tracking, and hiring manager "
-            "communication documented in the BrightScale role (Section 5.2, Section 5.5). "
+            "communication documented in the Saukala Global role (Section 5.2, Section 5.5). "
             "Transferable evidence clause (Section 7.2) supports progression where direct "
             "title equivalence is absent. These constitute the primary basis for the "
             "advancement recommendation."
         )
     return (
-        "What most supports moving this candidate forward is the BrightScale role: "
+        "What most supports moving this candidate forward is the Saukala Global role: "
         "candidate scheduling, tracking, and communication across hiring managers and "
         "applicants. That maps directly to Section 5.2 and Section 5.5. And I think "
         "Section 7.2 is important here too  -  the policy explicitly says that where the "
@@ -212,32 +220,35 @@ def card_caution_evidence(high_e: bool, high_a: bool) -> str:
     """[CAUTION_EVIDENCE] Strongest evidence giving reason for caution."""
     if not high_e and not high_a:
         return (
-            "Caution: end-to-end recruitment ownership not demonstrated. "
-            "Independent screening decision authority absent from documented experience. "
-            "These are required or preferred capabilities that are not fully evidenced."
+            "Caution: independent screening decision authority not evidenced. "
+            "CV explicitly states the candidate did not independently assess "
+            "candidate suitability or make screening recommendations. "
+            "End-to-end recruitment ownership not demonstrated."
         )
     if not high_e and high_a:
         return (
-            "The thing that gives me the most pause is that the CV doesn't clearly show "
-            "the candidate owning a recruitment process end-to-end, or making independent "
-            "screening decisions. That's a real gap  -  I want to be honest about it. "
-            "It doesn't change my recommendation, but it's the thing I'd want the "
-            "interview to answer."
+            "What gives me the most pause here is that the CV is explicit about "
+            "this  -  it's not just an absence of evidence. The candidate says "
+            "directly that independent screening decisions weren't part of the role. "
+            "That is a real gap, and it's the thing I'd want the interview to address."
         )
     if high_e and not high_a:
         return (
-            "Caution evidence: Section 5.4 (Structured Evaluation Support)  -  independent "
-            "evaluation authority or end-to-end screening ownership not clearly established. "
-            "Section 6.2  -  direct talent operations or recruitment coordination not held "
-            "under a formal title. These are the primary evidential gaps."
+            "Caution evidence: CV explicitly states the candidate did not independently "
+            "assess candidate suitability or make screening recommendations (cv_1). "
+            "Section 5.4 (Structured Evaluation Support)  -  independent evaluation "
+            "authority or end-to-end screening ownership not established. Section 6.2  -  "
+            "direct talent operations or recruitment coordination not held under a "
+            "formal title. These are the primary evidential gaps."
         )
     return (
-        "The strongest reason for caution is what's not clearly shown. Section 5.4 "
-        "asks for structured evaluation support with independent decision authority  -  "
-        "and I couldn't find clear evidence of that in the CV. Section 6.2 flags "
-        "direct talent operations experience as preferred, and the candidate hasn't "
-        "held that kind of role. These aren't just labelling gaps  -  they're genuine "
-        "uncertainties I'd want the interview to address."
+        "The strongest reason for caution is not ambiguity  -  it is what the CV "
+        "states explicitly. Section 5.4 asks for structured evaluation with "
+        "independent decision authority, and the CV says directly that the "
+        "candidate did not independently assess candidate suitability or make "
+        "screening recommendations. Section 6.2 flags direct talent operations "
+        "experience as preferred, and that is also absent. "
+        "These are real gaps, not just labelling differences."
     )
 
 
@@ -305,8 +316,8 @@ def card_missing_information(high_e: bool, high_a: bool) -> str:
             "Information absent from the available materials includes: explicit "
             "documentation of end-to-end recruitment or screening process ownership; "
             "evidence distinguishing the candidate's independent decision authority "
-            "from supervised support work; any clarification of scope in the Nexa "
-            "shortlisting work (cv_2). Interview would allow direct examination "
+            "from supervised support work; any clarification of scope in the Suvion "
+            "Digital shortlisting work (cv_2). Interview would allow direct examination "
             "of these points."
         )
     return (
@@ -424,8 +435,8 @@ def card_growth_potential(high_e: bool, high_a: bool) -> str:
             "Growth potential is addressed by the screening policy's Adjacent Experience Rule "
             "(Section 7.4), which supports candidates demonstrating increasing scope in "
             "adjacent roles rather than holding a direct title. The candidate's progression "
-            "from client support at Nexa (cv_2) to talent operations coordination at "
-            "BrightScale (cv_1) fits that pattern. This does not resolve the uncertainty "
+            "from client support at Suvion Digital (cv_2) to talent operations coordination "
+            "at Saukala Global (cv_1) fits that pattern. This does not resolve the uncertainty "
             "around Section 5.4, but it is consistent with a trajectory toward the role "
             "and supports progression to interview where growth can be examined directly."
         )
@@ -433,9 +444,9 @@ def card_growth_potential(high_e: bool, high_a: bool) -> str:
         "On growth potential: Section 7.4  -  the Adjacent Experience Rule  -  is directly "
         "relevant here. The policy supports candidates who have been building toward the "
         "role, not just those who've already held the title. The trajectory from client "
-        "support at Nexa to talent operations coordination at BrightScale is consistent "
-        "with that pathway. It doesn't resolve the Section 5.4 uncertainty, but it "
-        "adds genuine weight to advancing rather than holding at this stage."
+        "support at Suvion Digital to talent operations coordination at Saukala Global is "
+        "consistent with that pathway. It doesn't resolve the Section 5.4 uncertainty, "
+        "but it adds genuine weight to advancing rather than holding at this stage."
     )
 
 
@@ -448,39 +459,43 @@ def card_growth_potential(high_e: bool, high_a: bool) -> str:
 _PRIORITY_EVIDENCE_DATA: dict[str, dict[str, str]] = {
     "Independent ownership": {
         "high_e_low_a": (
-            "On independent ownership (Section 5.4, Section 5.6): the CV documents process "
-            "support and scheduling work, but does not clearly establish independent "
-            "decision authority over candidate outcomes or end-to-end screening ownership. "
+            "On independent ownership (Section 5.4, Section 5.6): the CV explicitly states "
+            "that the candidate did not independently assess candidate suitability or make "
+            "screening recommendations. Section 5.4 requires structured evaluation authority "
+            "and Section 5.6 requires independent execution. Neither is clearly established. "
             "Section 7.2 provides that this gap should be examined at interview rather "
             "than treated as a basis for exclusion at screening stage."
         ),
         "high_e_high_a": (
-            "You asked about independent ownership  -  and that's where the CV is least "
-            "clear. Section 5.4 and Section 5.6 both ask for evidence of owning decisions "
-            "independently, and the CV shows support work rather than ownership. That said, "
-            "Section 7.2 says this kind of gap should be examined at interview, not used "
-            "to screen someone out. So it's a flag, not a disqualifier."
+            "You asked about independent ownership  -  and this is where the evidence is "
+            "most explicit. Section 5.4 and Section 5.6 both require independent decision "
+            "authority, and the CV states directly that the candidate did not independently "
+            "assess candidate suitability or make screening recommendations. Section 7.2 "
+            "says this kind of gap should be examined at interview rather than used to "
+            "screen someone out  -  but this is a genuine gap, not just an absence of "
+            "the exact wording."
         ),
         "low_e_low_a": (
-            "On independent ownership: the CV does not clearly demonstrate independent "
-            "decision authority over screening outcomes. This is the main evidence gap."
+            "On independent ownership: the CV explicitly states the candidate did not "
+            "independently assess candidate suitability or make screening recommendations. "
+            "Independent decision authority over screening outcomes is not established."
         ),
         "low_e_high_a": (
-            "On independent ownership: the CV shows support work, but it is not clear "
-            "whether the candidate made the final calls or supported someone else who did. "
-            "That is the key question to resolve at interview."
+            "On independent ownership: the CV is clear about this  -  independent "
+            "screening decisions were not part of the role. That is the main gap that "
+            "needs to be examined at interview."
         ),
     },
     "Stakeholder communication": {
         "high_e_low_a": (
             "On stakeholder communication (Section 5.3, Section 5.5): the CV "
             "directly documents communication across hiring managers and applicants in the "
-            "BrightScale role. Both requirements are credibly evidenced and constitute a "
+            "Saukala Global role. Both requirements are credibly evidenced and constitute a "
             "material strength in the candidate's profile."
         ),
         "high_e_high_a": (
             "On stakeholder communication: this is one of the clearest "
-            "strengths. The BrightScale role involves direct communication across hiring "
+            "strengths. The Saukala Global role involves direct communication across hiring "
             "managers and applicants  -  Section 5.3 and Section 5.5 are both addressed. "
             "This is credible evidence, not inferential."
         ),
@@ -523,39 +538,41 @@ _PRIORITY_EVIDENCE_DATA: dict[str, dict[str, str]] = {
     "Structured evaluation or screening experience": {
         "high_e_low_a": (
             "On structured evaluation or screening experience (Section 5.4): the CV documents "
-            "applicant tracking, scheduling, and shortlisting support across two roles. "
-            "Section 5.4 requires structured evaluation support  -  this is partially "
-            "evidenced. Independent decision authority over screening outcomes is not "
-            "clearly established and is the primary remaining uncertainty."
+            "tracking, scheduling, and shortlisting support at Saukala Global and Suvion "
+            "Digital. Section 5.4 requires structured evaluation authority  -  the CV "
+            "explicitly states the candidate did not make independent screening decisions "
+            "or assess candidate suitability independently. This is the primary remaining "
+            "uncertainty for this requirement."
         ),
         "high_e_high_a": (
-            "On structured evaluation or screening experience: there's tracking and shortlisting "
-            "support in the CV, which addresses part of Section 5.4. The part that's "
-            "less clear is whether the candidate was making decisions or supporting "
-            "someone else's decisions. That distinction is what I can't resolve from "
-            "the CV alone."
+            "On structured evaluation or screening experience: tracking and shortlisting "
+            "support is in the CV, which addresses part of Section 5.4. The part that "
+            "is explicitly not there is independent decision authority  -  the CV "
+            "states directly that independent screening judgement was not held. "
+            "That distinction is what I cannot resolve in the candidate's favour from "
+            "the materials alone."
         ),
         "low_e_low_a": (
-            "On structured evaluation or screening experience: tracking and shortlisting support "
-            "is documented. Independent decision authority over screening outcomes "
-            "is not clearly established."
+            "On structured evaluation or screening experience: tracking and scheduling "
+            "support is documented. The CV explicitly states that independent candidate "
+            "assessment and screening recommendations were not held."
         ),
         "low_e_high_a": (
-            "On structured evaluation or screening experience: the candidate has done screening "
-            "support work, but the CV isn't clear on whether they were making the calls "
-            "or supporting someone else who was. That's the main thing to look at here."
+            "On structured evaluation or screening experience: there is tracking and "
+            "shortlisting support work, but the CV is explicit that the candidate was "
+            "not making the independent screening calls. That is the key gap here."
         ),
     },
     "Operational coordination": {
         "high_e_low_a": (
             "On operational coordination (Section 5.2): this is the candidate's most "
-            "clearly evidenced required capability. The BrightScale role directly "
+            "clearly evidenced required capability. The Saukala Global role directly "
             "documents scheduling, tracking sheet maintenance, and cross-functional "
             "follow-up  -  all of which map to the process coordination requirement."
         ),
         "high_e_high_a": (
             "On operational coordination: this is the strongest part of the profile. "
-            "Section 5.2 asks for process coordination, and the BrightScale role is "
+            "Section 5.2 asks for process coordination, and the Saukala Global role is "
             "exactly that  -  scheduling, tracking, following up across teams. "
             "Clearly and directly evidenced."
         ),
