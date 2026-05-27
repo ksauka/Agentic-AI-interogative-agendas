@@ -13,7 +13,6 @@ FOCUS_AREAS = [
     "Structured evaluation or screening experience",
     "Operational coordination",
     "Growth potential",
-    "Other concern",
 ]
 
 # ── HIC Stage 2: inspection options (C=1) ─────────────────────────────────────
@@ -100,11 +99,11 @@ def hic_stage1_prompt(condition: "Condition") -> str:
         return ""
     if condition.anthropomorphic_cues:
         return (
-            "Before I review the candidate, is there anything you would like me to pay "
-            "particular attention to?"
+            "Before I review the candidate, is there anything specific you would like "
+            "me to pay particular attention to? Select up to 3 areas."
         )
     return (
-        "Before generating the assessment: select any areas that should receive "
+        "Before generating the assessment: select up to 3 areas that should receive "
         "closer attention during candidate review."
     )
 

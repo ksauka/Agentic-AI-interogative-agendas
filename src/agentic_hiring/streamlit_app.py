@@ -767,26 +767,13 @@ def _screen_4_cv(
         with st.chat_message("assistant"):
             st.write(hic_stage1_prompt(condition))
 
-        for area in FOCUS_AREAS:
-            default = area in state.get("user_focus_areas", [])
-            st.checkbox(area, value=default, key=f"focus_{area}")
-
-        free_label = (
-            "Anything else you would like me to consider? (optional)"
-            if condition.anthropomorphic_cues
-            else "Additional area for attention (optional):"
-        )
-        st.text_area(
-            free_label,
-            value=state.get("user_focus_text", ""),
-            height=80,
-            max_chars=500,
-            key="hic1_free_text",
-            placeholder=(
-                "e.g. I want to understand whether the candidate can work independently."
-                if condition.anthropomorphic_cues
-                else "e.g. focus on evidence of direct recruitment ownership"
-            ),
+        st.multiselect(
+            "Select up to 3 areas:" if not condition.anthropomorphic_cues
+            else "Choose up to 3 areas (optional):",
+            options=FOCUS_AREAS,
+            default=[a for a in state.get("user_focus_areas", []) if a in FOCUS_AREAS],
+            max_selections=3,
+            key="hic1_focus_areas",
         )
 
     # ── Generate recommendation button ────────────────────────────────────────
@@ -814,19 +801,15 @@ def _screen_4_cv(
                 provenance_clicks=state.get("provenance_clicks", 0),
             )
             if condition.hic:
-                collected = [a for a in FOCUS_AREAS if st.session_state.get(f"focus_{a}", False)]
-                collected_text = st.session_state.get("hic1_free_text", "").strip()
+                collected = list(st.session_state.get("hic1_focus_areas", []))
                 state["user_focus_areas"] = collected
-                state["user_focus_text"] = collected_text
-                focus_parts = list(collected)
-                if collected_text:
-                    focus_parts.append(collected_text)
-                state["user_focus"] = "; ".join(focus_parts)
+                state["user_focus_text"] = ""
+                state["user_focus"] = "; ".join(collected)
                 state["hic1_completed"] = True
                 _log(
                     logger, state, "hic_stage1_completed",
                     hic_stage1_areas=collected,
-                    hic_stage1_free_text=collected_text,
+                    hic_stage1_free_text="",
                     hic_stage1_combined=state["user_focus"],
                 )
             state["reco_generated"] = True
