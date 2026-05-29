@@ -163,6 +163,8 @@ def flatten_participant_rows(sessions: list[dict[str, Any]]) -> list[dict[str, A
             "time_from_judgement_settledness_to_final_decision_seconds": s.get("time_from_judgement_settledness_to_final_decision_seconds", ""),
             "provenance_clicks": s.get("provenance_clicks", 0),
             "citation_evidence_inspected": _as_bool(s.get("citation_evidence_inspected", unique_clicked > 0)),
+            "citations_shown": _join_list(citations_shown),
+            "citations_clicked": _join_list(citations_clicked),
             "full_document_inspected": _as_bool(s.get("full_document_inspected", False)),
             "role_full_viewed": _as_bool(s.get("role_full_viewed", False)),
             "policy_full_viewed": _as_bool(s.get("policy_full_viewed", False)),
@@ -175,6 +177,8 @@ def flatten_participant_rows(sessions: list[dict[str, Any]]) -> list[dict[str, A
             "citation_ctr_unique_clicked_over_shown": citation_ctr,
             "screen_dwell_role_summary": _safe_float(screen_dwell.get("role_summary", 0.0), 0.0),
             "screen_dwell_policy_summary": _safe_float(screen_dwell.get("policy_summary", 0.0), 0.0),
+            "screen_dwell_candidate_recommendation": _safe_float(screen_dwell.get("candidate_cv_and_recommendation", 0.0), 0.0),
+            # Backward-compatible alias retained for older notebooks.
             "screen_dwell_candidate_cv_and_recommendation": _safe_float(screen_dwell.get("candidate_cv_and_recommendation", 0.0), 0.0),
             "screen_dwell_final_decision": _safe_float(screen_dwell.get("final_decision", 0.0), 0.0),
             "qualtrics_returned": _as_bool(s.get("qualtrics_returned", False)),
