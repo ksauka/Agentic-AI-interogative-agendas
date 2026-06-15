@@ -3,8 +3,7 @@
 ## Design Rule
 
 The agent uses one constant retrieval-grounded hiring recommendation policy. The experimental
-conditions vary only three visible overlays in the locked replacement design
-summarized in `../../docs/research_brief.md`:
+conditions vary only three visible overlays:
 
 - `E`: provenance-based explainability;
 - `A`: anthropomorphic communication cues; and
