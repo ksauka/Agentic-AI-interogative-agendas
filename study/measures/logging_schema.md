@@ -21,7 +21,7 @@ turn, where available.
 | `condition_id` | enum | One of `E0_A0_C0` through `E1_A1_C1`. |
 | `explainability_on` | boolean | Assigned provenance-based explainability overlay. |
 | `anthropomorphic_cues_on` | boolean | Assigned anthropomorphic communication overlay. |
-| `control_cues_on` | boolean | Assigned Mixed-Initiative Control Cue overlay, implemented through an interrogative agenda prompt. |
+| `hic_on` | boolean | Assigned Human Intervention Checkpoint condition. The legacy `control_cues_on` field may be retained as an alias for compatibility. |
 | `candidate_cv_received` | event | Records uploaded/pasted candidate source type and character count; CV text is not duplicated in the event log. |
 | `retrieval_backend` | string | Retrieval implementation used for the recommendation turn, for example `chroma_persisted_internal_plus_uploaded_cv:text-embedding-3-small`. |
 | `generation_backend` | string | Generation implementation used for the recommendation turn, for example `openai_responses:gpt-4o-mini-2024-07-18`. |
@@ -45,7 +45,7 @@ turn, where available.
 | `decision_right_reminder_present` | boolean | Whether the participant is explicitly reminded of final choice/control. |
 | `substantive_advancement` | boolean | Whether the output provides a recommendation or progresses the hiring decision. |
 | `user_response_type` | enum | `inspected_evidence`, `asked_clarification`, `selected_decision`, `no_response`, or `unclear`. |
-| `user_verification_request` | boolean | Whether the participant checks, questions, or asks for support for the proposal. |
+| `verification_uptake` | boolean | Whether the participant inspects cited evidence or accesses underlying role/policy evidence before the final decision. |
 | `notes` | text | Coder or system notes for exceptional cases. |
 
 ## Derived Behavioral Indicators
@@ -53,8 +53,8 @@ turn, where available.
 | Indicator | Proposed computation |
 | --- | --- |
 | Recommendation acceptance | Whether, or the proportion of cases where, `recommendation_followed=true`. |
-| Evidence inspection before decision | Whether the participant inspects retrieved criteria/CV evidence before selecting the final action. |
-| Verification/clarification requests | Count or rate of turns where `user_verification_request=true` or response is `asked_clarification`. |
+| Verification uptake | Whether the participant inspects cited evidence or accesses underlying role/policy evidence before selecting the final action. |
+| Citation and document inspection | Count or rate of citation-chip clicks, cited-section views, and full-document access events. |
 | Override frequency | Count or proportion of final decisions that differ from the recommendation. |
 
 ## Manipulation Delivery Checks
@@ -67,14 +67,13 @@ For initial pilots, delivery can be audited with these expectations:
 | `explainability_on=false` | `rationale_present=false` except documented coherence exceptions. |
 | `anthropomorphic_cues_on=true` | At least one relevant social cue may be present; excessive warmth remains a violation. |
 | `anthropomorphic_cues_on=false` | `first_person_present=false` and `cooperative_cue_present=false` except minimal politeness. |
-| `control_cues_on=true` | At least one of `checkpoint_present`, `options_present`, `divergence_signal_present`, or `decision_right_reminder_present` is true before final-decision progression. |
-| `control_cues_on=false` | Routine designed checkpoints should not appear. |
+| `hic_on=true` | At least one HIC interaction opportunity is available before final-decision closure, such as evaluation-priority selection or targeted follow-up review. |
+| `hic_on=false` | Routine HIC workflow controls should not appear. |
 
 ## Open Implementation Decisions
 
 - Whether field coding is generated automatically, coded manually during
   pilots, or verified through both methods.
-- How the interface records evidence inspection, recommendation override, and
-  changes to an already selected hiring action.
+- How the interface records evidence inspection depth, recommendation-path changes, and post-settledness latency.
 - Storage, consent, access control, and retention procedures for interaction
   text and participant metadata.

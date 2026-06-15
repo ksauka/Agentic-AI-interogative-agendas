@@ -1,6 +1,6 @@
 # Agentic AI Interogative Agendas
 
-Research prototype for a controlled agentic hiring-support study. The project implements a retrieval-grounded Streamlit experience in which the underlying recommendation pipeline remains fixed while participant-facing communication features vary across experimental conditions.
+Research prototype for a controlled agentic hiring-support study on explanation, anthropomorphic delivery, trust, overreliance, and verification in agentic AI decision support. The project implements a Streamlit workflow in which the hiring case remains fixed while provenance cues, conversational style, and Human Intervention Checkpoints vary across conditions.
 
 The repository name retains the original spelling, `interogative`.
 
@@ -12,7 +12,7 @@ The study uses a 2 x 2 x 2 condition structure:
 
 - Explainability: low or high provenance visibility
 - Anthropomorphic cues: low or high
-- Mixed-initiative control cues: absent or present
+- Human Intervention Checkpoints: absent or present
 
 ## Repository Structure
 
@@ -67,4 +67,4 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 ## Research Use
 
-This software is a research instrument using fictional hiring materials. It should not be used to support real hiring, screening, promotion, or employment decisions.
+This software is a research instrument using fictional hiring materials. It is designed to study recommendation following, overreliant advancement, and verification uptake; it should not be used to support real hiring, screening, promotion, or employment decisions.

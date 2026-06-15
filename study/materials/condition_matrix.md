@@ -7,7 +7,7 @@ conditions vary only three visible overlays:
 
 - `E`: provenance-based explainability;
 - `A`: anthropomorphic communication cues; and
-- `C`: mixed-initiative control cues through interrogative agendas.
+- `C`: Human Intervention Checkpoints (HICs), retained as `C` in condition IDs for compatibility.
 
 The fixed substantive calculation is `Recommendation = CV fit against (company context + role requirements + policy rules)`: the CV is the submitted evidence; company context, role description, and screening policy are the indexed knowledge documents against which fit is evaluated. This calculation occurs before any visible overlay is delivered.
 
@@ -54,12 +54,9 @@ When `A=1`, the wording may include mild first-person phrasing, cooperative
 acknowledgements, and limited affiliative framing. When `A=0`, wording should
 be neutral, professional, and socially thin without becoming impolite.
 
-### Mixed-Initiative Control (`C`)
+### Human Intervention Checkpoints (`C`)
 
-When `C=1`, before moving the participant toward a hiring decision the
-assistant should offer a choice, ask a targeted question, insert a checkpoint,
-or remind the user that the final decision is theirs. When `C=0`, it may
-present its recommendation directly without a designed checkpoint.
+When `C=1`, the workflow includes structured intervention points that let the participant steer or redirect the recommendation path before final decision closure. These checkpoints may include evaluation-priority selection or a targeted follow-up review. They should be logged separately from verification uptake, because steering the workflow is not the same as inspecting evidence. When `C=0`, the participant proceeds without a designed HIC.
 
 ## Contamination Checks
 
@@ -68,6 +65,6 @@ Pilot review should flag:
 - rationale in an `E=0` turn beyond minimal conversational necessity;
 - warmth-heavy, affiliative, or strongly first-person language in an `A=0`
   turn;
-- omitted checkpoint before decision progression in a `C=1` turn;
-- routine decision checkpoints in a `C=0` turn; and
+- omitted HIC workflow control in a `C=1` condition;
+- routine HIC-style checkpoints in a `C=0` condition; and
 - underlying recommendation or evidence differing between condition cells.

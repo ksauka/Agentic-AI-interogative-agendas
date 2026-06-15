@@ -3,8 +3,7 @@
 ## Constant Experience
 
 All eight Streamlit apps use the same participant-facing sequence, materials,
-and recommendation logic. The agent first compares CV evidence against internal company context and role requirements under the screening policy; only then are visible communication and control-cue overlays applied. Only the explainability, anthropomorphic-cue, and
-Mixed-Initiative Control Cue overlays, operationalized as interrogative agendas, vary by assigned condition.
+and recommendation logic. The agent first compares CV evidence against internal company context and role requirements under the screening policy; only then are visible communication and control-cue overlays applied. Only provenance-based explainability cues, anthropomorphic delivery, and Human Intervention Checkpoints vary by assigned condition.
 
 ## Screens
 
@@ -50,8 +49,7 @@ Mixed-Initiative Control Cue overlays, operationalized as interrogative agendas,
 
 8. Post-task questionnaire
 
-   Capture sense of agency, overreliance, manipulation checks, and relevant
-   covariates.
+   Capture perceived explainability, perceived anthropomorphism, trust, recommendation settledness, overreliance, verification behaviour, manipulation checks, and relevant covariates.
 
 At the decision stages, participants must still be able to inspect the role
 description, screening policy, and candidate CV.
