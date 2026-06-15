@@ -1,6 +1,6 @@
 # Agentic AI Interogative Agendas
 
-Research prototype for a controlled agentic hiring-support study on explanation, anthropomorphic delivery, trust, overreliance, and verification in agentic AI decision support. The project implements a Streamlit workflow in which the hiring case remains fixed while provenance cues, conversational style, and Human Intervention Checkpoints vary across conditions.
+Research prototype for a controlled agentic hiring-support study on explanation, anthropomorphic delivery, trust, overreliance, and verification in agentic AI decision support. The project implements a Streamlit workflow in which the hiring case remains fixed while provenance cues, conversational style, and Human Intervention Checkpoints (interrogative agendas) vary across conditions.
 
 ## Overview
 
