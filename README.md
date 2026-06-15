@@ -1,12 +1,12 @@
 # Agentic AI Interogative Agendas
 
-Research prototype for studying how agentic, retrieval-grounded hiring support can preserve human agency. The project implements a controlled Streamlit experience in which communication overlays vary explainability, anthropomorphic cues, and mixed-initiative control cues while the underlying hiring recommendation pipeline remains fixed.
+Research prototype for a controlled agentic hiring-support study. The project implements a retrieval-grounded Streamlit experience in which the underlying recommendation pipeline remains fixed while participant-facing communication features vary across experimental conditions.
 
 The repository name retains the original spelling, `interogative`.
 
 ## Overview
 
-The application evaluates a fictional candidate against internal hiring materials: company context, role requirements, and screening policy. It is designed for experimental research on human-AI interaction, not for real employment decisions.
+The application evaluates a fictional candidate against internal hiring materials: company context, role requirements, and screening policy. It is designed as an experimental research instrument, not as a real hiring or screening system.
 
 The study uses a 2 x 2 x 2 condition structure:
 
