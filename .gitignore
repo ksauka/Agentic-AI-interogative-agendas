@@ -45,5 +45,8 @@ study/vector_store/
 # Researcher-facing protocol documents — not for version control
 study/protocol/
 # Local publishing exclusions
-docs/
+docs/*
+!docs/manuscript/
+docs/manuscript/*
+!docs/manuscript/projectdescription.md
 archive/
